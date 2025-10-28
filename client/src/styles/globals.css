@@ -1,0 +1,161 @@
+/*! Tailwind CSS directives - these are processed by Tailwind CSS compiler */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined');
+
+/*! Tailwind CSS directives - these are processed by Tailwind CSS compiler */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Manrope', system-ui, sans-serif;
+  }
+
+  body {
+    @apply font-display bg-gradient-to-br from-emerald-50 to-teal-100 antialiased;
+    font-family: 'Manrope', 'Noto Sans', sans-serif;
+    width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    font-size: 24px;
+  }
+}
+
+@layer components {
+  .login-card {
+    @apply flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm rounded-xl p-8 sm:p-12 shadow-xl;
+    /* Keep transition but move hover lift/shadow to the inner modal so
+       the background card can be disabled while the modal retains its hover effect. */
+    @apply transition-all duration-300;
+  }
+
+  .btn-guest {
+    @apply flex h-14 min-w-[84px] w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg px-5;
+    @apply border-2 border-slate-300 bg-white text-[#111816] text-base font-bold leading-normal tracking-[0.015em];
+    @apply transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
+  }
+
+  .btn-student {
+    @apply flex h-14 min-w-[84px] w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg px-5;
+    @apply bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-base font-bold leading-normal tracking-[0.015em];
+    @apply transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:from-emerald-600 hover:to-teal-600;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
+  }
+
+  .btn-staff {
+    @apply flex h-14 min-w-[84px] w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg px-5;
+    @apply bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-base font-bold leading-normal tracking-[0.015em];
+    @apply transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:from-emerald-700 hover:to-teal-700;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
+  }
+
+  .btn-login {
+    @apply flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 text-white text-base font-bold leading-normal tracking-[0.015em];
+    @apply transition-all duration-300 hover:bg-emerald-600 hover:-translate-y-0.5 hover:shadow-lg;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
+  }
+
+  .input-field {
+    @apply w-full h-14 pl-12 pr-4 rounded-lg border-2 border-slate-200 bg-slate-50;
+    @apply focus:border-primary focus:ring-primary text-slate-800 placeholder-slate-400;
+    @apply transition-all duration-300;
+  }
+
+  .logo-icon {
+    @apply size-10 text-primary;
+  }
+
+  .modal-overlay {
+    /* Subtle overlay to provide depth without heavy darkening or gray bands */
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/10 p-4;
+    @apply opacity-100 visible transition-all duration-300;
+  }
+
+  .login-modal {
+    @apply relative w-full max-w-sm transform rounded-xl bg-white p-8 text-center shadow-2xl;
+    /* Add hover lift/shadow to the modal itself so it still pops on hover
+       even when the outer card is made transparent while the modal is active. */
+    @apply transition-all duration-300 scale-100 hover:-translate-y-0.5 hover:shadow-2xl;
+  }
+
+  .message-bubble-user {
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 0.25rem;
+    border-bottom-left-radius: 1rem;
+    border-bottom-right-radius: 1rem;
+  }
+
+  .message-bubble-ai {
+    border-top-left-radius: 0.25rem;
+    border-top-right-radius: 1rem;
+    border-bottom-left-radius: 1rem;
+    border-bottom-right-radius: 1rem;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .animate-bounce-gentle {
+    animation: bounceGentle 2s infinite;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes bounceGentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}

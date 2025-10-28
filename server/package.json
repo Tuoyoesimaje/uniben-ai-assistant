@@ -1,0 +1,35 @@
+{
+  "name": "uniben-ai-assistant-server",
+  "version": "1.0.0",
+  "description": "Backend server for UNIBEN AI Assistant",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "keywords": [
+    "uniben",
+    "ai",
+    "assistant",
+    "university"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.12.2",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "mapbox-gl": "^3.16.0",
+    "mongoose": "^7.6.3",
+    "multer": "^2.0.2",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^5.4.296"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
