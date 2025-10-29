@@ -9,6 +9,7 @@ router.post('/login/student', authController.loginStudent);
 // POST /api/auth/login/staff
 router.post('/login/staff', authController.loginStaff);
 
+
 // POST /api/auth/login/guest
 router.post('/login/guest', authController.loginGuest);
 

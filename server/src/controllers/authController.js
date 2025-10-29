@@ -94,7 +94,7 @@ exports.loginStudent = async (req, res) => {
 // Login staff
 exports.loginStaff = async (req, res) => {
   try {
-    const { staffId } = req.body;
+    const { staffId, securityAnswer } = req.body;
 
     // Validate input
     if (!staffId) {
@@ -104,10 +104,70 @@ exports.loginStaff = async (req, res) => {
       });
     }
 
-    // Find staff member
+    // Check if this is system admin login
+    if (isSystemAdmin(staffId.toUpperCase())) {
+      // System admin requires additional security question
+      if (!securityAnswer) {
+        return res.status(400).json({
+          success: false,
+          message: 'Security verification required for system admin access',
+          requiresSecurity: true
+        });
+      }
+
+      // Check security answer (you can customize this)
+      const correctAnswer = process.env.SYSTEM_ADMIN_SECURITY_ANSWER || 'uniben2024';
+      if (securityAnswer.toLowerCase() !== correctAnswer.toLowerCase()) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid security answer'
+        });
+      }
+
+      // Find or create system admin
+      let systemAdmin = await User.findOne({
+        staffId: staffId.toUpperCase(),
+        role: 'system_admin'
+      });
+
+      if (!systemAdmin) {
+        systemAdmin = new User({
+          name: 'System Administrator',
+          staffId: staffId.toUpperCase(),
+          role: 'system_admin',
+          email: 'system.admin@uniben.edu.ng'
+        });
+        await systemAdmin.save();
+      }
+
+      // Update last login
+      systemAdmin.lastLogin = new Date();
+      await systemAdmin.save();
+
+      // Generate token
+      const token = generateToken(systemAdmin);
+
+      return res.status(200).json({
+        success: true,
+        message: `Welcome, System Administrator! 🔧`,
+        token,
+        user: {
+          id: systemAdmin._id,
+          name: systemAdmin.name,
+          role: systemAdmin.role,
+          displayId: systemAdmin.displayId,
+          email: systemAdmin.email,
+          department: systemAdmin.department,
+          courses: systemAdmin.courses,
+          lastLogin: systemAdmin.lastLogin
+        }
+      });
+    }
+
+    // Regular staff login
     const user = await User.findOne({
       staffId: staffId.toUpperCase(),
-      role: 'staff',
+      role: { $in: ['staff', 'bursary_admin', 'departmental_admin', 'lecturer_admin'] },
       isActive: true
     });
 
@@ -129,7 +189,7 @@ exports.loginStaff = async (req, res) => {
     // Return success response
     res.status(200).json({
       success: true,
-      message: `Welcome back, ${user.name}! 👨‍🏫`,
+      message: `Welcome back, ${user.name}! ${user.role === 'bursary_admin' ? '💰' : user.role === 'departmental_admin' ? '🏫' : user.role === 'lecturer_admin' ? '👨‍🏫' : '👨‍🏫'}`,
       token,
       user: {
         id: user._id,
@@ -159,6 +219,11 @@ exports.loginStaff = async (req, res) => {
       code: 'SERVER_ERROR'
     });
   }
+};
+
+// Check if user is system admin and requires additional authentication
+const isSystemAdmin = (staffId) => {
+  return staffId === process.env.SYSTEM_ADMIN_STAFF_ID || staffId === 'SYSADMIN-001';
 };
 
 // Login guest

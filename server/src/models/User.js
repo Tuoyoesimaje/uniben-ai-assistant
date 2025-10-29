@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema({
     sparse: true,
     uppercase: true,
     trim: true,
-    match: [/^STAFF-\d{4,6}$/, 'Please enter a valid staff ID (e.g., STAFF-1234)']
+    match: [/^(STAFF-\d{4,6}|SYSADMIN-\d{3})$/, 'Please enter a valid staff ID (e.g., STAFF-1234 or SYSADMIN-001)']
   },
   role: {
     type: String,

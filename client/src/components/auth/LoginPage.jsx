@@ -5,6 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 export default function LoginPage() {
   const [loginType, setLoginType] = useState(null); // null, 'student', 'staff'
   const [credentials, setCredentials] = useState('');
+  const [securityAnswer, setSecurityAnswer] = useState('');
+  const [requiresSecurity, setRequiresSecurity] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -38,14 +40,24 @@ export default function LoginPage() {
       return;
     }
 
+    if (requiresSecurity && !securityAnswer.trim()) {
+      setError('Security answer is required');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
 
     try {
-      await loginStaff(credentials.trim());
-      navigate('/chat');
+      await loginStaff(credentials.trim(), securityAnswer.trim());
+      navigate('/admin');
     } catch (err) {
-      setError(err.message);
+      if (err.message.includes('Security verification required')) {
+        setRequiresSecurity(true);
+        setError('Additional security verification required for system admin access');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -65,9 +77,12 @@ export default function LoginPage() {
     }
   };
 
+
   const resetForm = () => {
     setLoginType(null);
     setCredentials('');
+    setSecurityAnswer('');
+    setRequiresSecurity(false);
     setError('');
   };
 
@@ -177,6 +192,22 @@ export default function LoginPage() {
                   autoFocus
                 />
               </div>
+
+              {requiresSecurity && (
+                <div className="relative w-full mb-6">
+                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                    security
+                  </span>
+                  <input
+                    type="password"
+                    value={securityAnswer}
+                    onChange={(e) => setSecurityAnswer(e.target.value)}
+                    placeholder="Security Answer"
+                    className="input-field"
+                    disabled={isLoading}
+                  />
+                </div>
+              )}
 
               <button
                 type="submit"

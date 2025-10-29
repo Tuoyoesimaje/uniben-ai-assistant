@@ -131,13 +131,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Staff login
-  const loginStaff = async (staffId) => {
+  const loginStaff = async (staffId, securityAnswer = '') => {
     try {
       setError(null);
       setLoading(true);
 
   const response = await axios.post('/api/auth/login/staff', {
-        staffId: staffId.toUpperCase()
+        staffId: staffId.toUpperCase(),
+        securityAnswer: securityAnswer
       });
 
       if (response.data.success) {
