@@ -141,7 +141,7 @@ exports.submitQuiz = async (req, res) => {
     let correctAnswers = 0;
     const answerDetails = [];
 
-    Object.entries(answers).forEach(([index, answer]) => {
+    Object.entries(answers || {}).forEach(([index, answer]) => {
       const question = quiz.questions[index];
       const isCorrect = answer.selected === question.correctAnswer;
 
@@ -153,29 +153,39 @@ exports.submitQuiz = async (req, res) => {
         questionIndex: parseInt(index),
         selectedAnswer: answer.selected,
         isCorrect,
-        attempts: answer.attempts || 1
+        attempts: answer.attempts || 1,
+        timeSpent: answer.timeSpent || 0
       });
     });
 
-    const score = Math.round((correctAnswers / quiz.questions.length) * 100);
+    const totalQuestions = quiz.questions.length || 0;
+    const percentage = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+    const incorrectAnswers = totalQuestions - correctAnswers;
 
-    quiz.results = {
-      score,
-      totalQuestions: quiz.questions.length,
+    // Build a result object that matches the Quiz model schema (results is an array)
+    const resultObj = {
+      userId: req.user?.id || req.user?._id,
+      score: percentage,
+      percentage,
+      totalQuestions,
       correctAnswers,
-      incorrectAnswers: quiz.questions.length - correctAnswers,
+      incorrectAnswers,
+      timeSpent: timeSpent || 0,
       answers: answerDetails,
-      timeSpent,
       completedAt: new Date()
     };
 
-    console.log('Saving quiz results:', quiz.results);
+    // Ensure results is an array and push the new result
+    quiz.results = Array.isArray(quiz.results) ? quiz.results : [];
+    quiz.results.push(resultObj);
+
+    console.log('Saving quiz results:', resultObj);
     await quiz.save();
 
     console.log('Quiz submitted successfully');
     res.json({
       success: true,
-      results: quiz.results
+      results: resultObj
     });
   } catch (error) {
     console.error('Submit error:', error);
@@ -191,11 +201,21 @@ exports.getResults = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Results not found' });
     }
 
+    // Try to find the result for the requesting user; fall back to the latest result
+    const userId = req.user?.id || req.user?._id;
+    let resultForUser = null;
+    if (Array.isArray(quiz.results)) {
+      resultForUser = quiz.results.find(r => r.userId && r.userId.toString() === userId?.toString());
+      if (!resultForUser) resultForUser = quiz.results[quiz.results.length - 1];
+    } else {
+      resultForUser = quiz.results;
+    }
+
     res.json({
       success: true,
       quiz: {
         title: quiz.title,
-        results: quiz.results,
+        results: resultForUser,
         questions: quiz.questions // Now send everything for review
       }
     });
