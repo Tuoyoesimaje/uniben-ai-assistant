@@ -404,6 +404,15 @@ const AdminPage = () => {
               {user.role === 'system_admin' && (
                 <>
                   <button
+                    onClick={() => setActiveTab('courses')}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
+                      activeTab === 'courses' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <BookOpen className="w-5 h-5" />
+                    Courses
+                  </button>
+                  <button
                     onClick={() => setActiveTab('buildings')}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
                       activeTab === 'buildings' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
@@ -894,7 +903,9 @@ const AdminPage = () => {
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <h2 className="text-xl font-semibold text-gray-900">
-                    {user.role === 'lecturer_admin' ? 'My Assigned Courses' : user.role === 'departmental_admin' ? 'Department Courses' : 'Course Management'}
+                    {user.role === 'system_admin' && 'Global Course Templates'}
+                    {user.role === 'departmental_admin' && 'Department Course Offerings'}
+                    {user.role === 'lecturer_admin' && 'My Teaching Schedule'}
                   </h2>
                   <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                     <input
@@ -904,22 +915,22 @@ const AdminPage = () => {
                       onChange={(e) => handleSearchChange('courses', e.target.value)}
                       className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     />
-                    {(user.role === 'system_admin' || user.role === 'departmental_admin') && (
+                    {user.role === 'system_admin' && (
                       <button
                         onClick={() => openModal('course')}
                         className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 flex items-center gap-2 w-full sm:w-auto"
                       >
                         <Plus className="w-4 h-4" />
-                        Add Course
+                        Create Course & Assign Owner
                       </button>
                     )}
-                    {user.role === 'lecturer_admin' && (
+                    {user.role === 'departmental_admin' && (
                       <button
-                        onClick={() => openModal('course')}
-                        className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 flex items-center gap-2 w-full sm:w-auto"
+                        onClick={() => openModal('course-offering')}
+                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center gap-2 w-full sm:w-auto"
                       >
                         <Plus className="w-4 h-4" />
-                        Create Course
+                        Add Course Offering
                       </button>
                     )}
                   </div>
@@ -929,24 +940,44 @@ const AdminPage = () => {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-gray-200">
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Code</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Title</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Department</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Lecturer</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Level</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Students</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
+                          {user.role === 'system_admin' && (
+                            <>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Code</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Title</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Owner Department</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Offering Departments</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
+                            </>
+                          )}
+                          {user.role === 'departmental_admin' && (
+                            <>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Code</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Title</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Assigned Lecturers</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Offering Levels</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
+                            </>
+                          )}
+                          {user.role === 'lecturer_admin' && (
+                            <>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Code</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Title</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Class Department</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Level</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Schedule</th>
+                            </>
+                          )}
                         </tr>
                       </thead>
                       <tbody>
-                        {filterData(courses, searchTerms.courses, ['code', 'title', 'department.name', 'lecturerId.name', 'lecturer.name']).map((course) => (
+                        {user.role === 'system_admin' && filterData(courses, searchTerms.courses, ['code', 'title', 'department.name']).map((course) => (
                           <tr key={course._id} className="border-b border-gray-100">
                             <td className="py-3 px-4 font-mono text-sm">{course.code}</td>
                             <td className="py-3 px-4">{course.title}</td>
                             <td className="py-3 px-4">{course.department?.name || 'N/A'}</td>
-                            <td className="py-3 px-4">{course.lecturerId?.name || course.lecturer?.name || 'Not Assigned'}</td>
-                            <td className="py-3 px-4">{course.level}</td>
-                            <td className="py-3 px-4">{course.students?.length || 0}</td>
+                            <td className="py-3 px-4">
+                              <span className="text-sm text-gray-600">Departments offering this course</span>
+                            </td>
                             <td className="py-3 px-4">
                               <div className="flex gap-2">
                                 <button
@@ -955,14 +986,52 @@ const AdminPage = () => {
                                 >
                                   <Edit className="w-4 h-4" />
                                 </button>
-                                {(user.role === 'system_admin' || user.role === 'departmental_admin') && (
-                                  <button
-                                    onClick={() => handleDelete('courses', course._id)}
-                                    className="text-red-600 hover:text-red-800"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
+                                <button
+                                  onClick={() => handleDelete('courses', course._id)}
+                                  className="text-red-600 hover:text-red-800"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+
+                        {user.role === 'departmental_admin' && filterData(courses, searchTerms.courses, ['code', 'title', 'department.name', 'lecturerId.name']).map((course) => (
+                          <tr key={course._id} className="border-b border-gray-100">
+                            <td className="py-3 px-4 font-mono text-sm">{course.code}</td>
+                            <td className="py-3 px-4">{course.title}</td>
+                            <td className="py-3 px-4">{course.lecturerId?.name || course.lecturer?.name || 'Not Assigned'}</td>
+                            <td className="py-3 px-4">{course.level} Level</td>
+                            <td className="py-3 px-4">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => openModal('course-offering', course)}
+                                  className="text-blue-600 hover:text-blue-800"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete('courses', course._id)}
+                                  className="text-red-600 hover:text-red-800"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+
+                        {user.role === 'lecturer_admin' && filterData(courses, searchTerms.courses, ['code', 'title', 'department.name']).map((course) => (
+                          <tr key={course._id} className="border-b border-gray-100">
+                            <td className="py-3 px-4 font-mono text-sm">{course.code}</td>
+                            <td className="py-3 px-4">{course.title}</td>
+                            <td className="py-3 px-4">{course.department?.name || 'N/A'}</td>
+                            <td className="py-3 px-4">{course.level} Level</td>
+                            <td className="py-3 px-4">
+                              <div className="text-sm">
+                                <div className="font-medium">{course.schedule || 'TBA'}</div>
+                                <div className="text-gray-500">{course.semester || 'Both semesters'}</div>
                               </div>
                             </td>
                           </tr>
@@ -1331,9 +1400,9 @@ const AdminPage = () => {
 
                   {modalType === 'course' && user.role === 'system_admin' && (
                     <>
-                      <div className="text-lg font-semibold text-green-700 mb-4">Create Global Course Template</div>
+                      <div className="text-lg font-semibold text-green-700 mb-4">Create Course & Assign Owner Department</div>
                       <div className="text-sm text-green-600 bg-green-50 p-3 rounded border-l-4 border-green-400 mb-4">
-                        <strong>System Admin:</strong> Create a course template that departments can adopt and offer to their students.
+                        <strong>System Admin:</strong> Create a course and assign which department owns it. Other departments can later "borrow" this course for their students.
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1364,7 +1433,7 @@ const AdminPage = () => {
                         className="w-full p-2 border rounded"
                         required
                       >
-                        <option value="">Select Primary Department (Owner)</option>
+                        <option value="">Select Department That Owns This Course</option>
                         {departments && departments.map && departments.map(dept => (
                           <option key={dept._id} value={dept._id}>{dept.name}</option>
                         ))}
@@ -1436,112 +1505,11 @@ const AdminPage = () => {
                       </div>
 
                       <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded border-l-4 border-blue-400">
-                        <strong>Note:</strong> Other departments can "borrow" this course by adding it to their offerings. The primary department you select above will own this course by default.
+                        <strong>Note:</strong> The department you select above will own this course. Other departments can later "borrow" this course for their students, but this department will be the primary owner.
                       </div>
                     </>
                   )}
 
-                  {modalType === 'quiz' && (
-                    <>
-                      <input
-                        type="text"
-                        name="title"
-                        placeholder="Quiz Title"
-                        value={formData.title || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                        required
-                      />
-
-                      <select
-                        name="course"
-                        value={formData.course || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                        required
-                      >
-                        <option value="">Select Course</option>
-                        {courses && courses.map && courses.map(course => (
-                          <option key={course._id} value={course._id}>{course.code} - {course.title}</option>
-                        ))}
-                      </select>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <input
-                          type="number"
-                          name="duration"
-                          placeholder="Duration (minutes)"
-                          value={formData.duration || ''}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                          min="5"
-                          max="180"
-                        />
-                        <input
-                          type="number"
-                          name="totalQuestions"
-                          placeholder="Total Questions"
-                          value={formData.totalQuestions || ''}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                          min="1"
-                          max="100"
-                        />
-                        <input
-                          type="number"
-                          name="passingScore"
-                          placeholder="Passing Score (%)"
-                          value={formData.passingScore || ''}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                          min="0"
-                          max="100"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <select
-                          name="difficulty"
-                          value={formData.difficulty || 'medium'}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                        >
-                          <option value="easy">Easy</option>
-                          <option value="medium">Medium</option>
-                          <option value="hard">Hard</option>
-                        </select>
-                        <input
-                          type="datetime-local"
-                          name="scheduledDate"
-                          value={formData.scheduledDate || ''}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                        />
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          name="isActive"
-                          checked={formData.isActive !== undefined ? formData.isActive : true}
-                          onChange={(e) => handleInputChange({
-                            target: { name: 'isActive', value: e.target.checked }
-                          })}
-                          className="w-4 h-4"
-                        />
-                        <label className="text-sm text-gray-700">Quiz is active</label>
-                      </div>
-
-                      <textarea
-                        name="instructions"
-                        placeholder="Quiz Instructions (Optional)"
-                        value={formData.instructions || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                        rows="3"
-                      />
-                    </>
-                  )}
                 </div>
                 <div className="flex gap-2 mt-6">
                   <button
