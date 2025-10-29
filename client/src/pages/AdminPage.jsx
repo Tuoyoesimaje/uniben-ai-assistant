@@ -1400,12 +1400,13 @@ const AdminPage = () => {
 
                   {modalType === 'course' && user.role === 'system_admin' && (
                     <>
-                      <div className="text-lg font-semibold text-green-700 mb-4">Create Course & Assign Owner Department</div>
+                      <div className="text-lg font-semibold text-green-700 mb-4">Create Course & Configure Offerings</div>
                       <div className="text-sm text-green-600 bg-green-50 p-3 rounded border-l-4 border-green-400 mb-4">
-                        <strong>System Admin:</strong> Create a course and assign which department owns it. Other departments can later "borrow" this course for their students.
+                        <strong>System Admin:</strong> Create a course and configure which departments can offer it at which levels. Use the + buttons to add multiple departments and levels as needed.
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Basic Course Information */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <input
                           type="text"
                           name="code"
@@ -1426,31 +1427,18 @@ const AdminPage = () => {
                         />
                       </div>
 
-                      <select
-                        name="department"
-                        value={formData.department || ''}
+                      <textarea
+                        name="description"
+                        placeholder="Course Description"
+                        value={formData.description || ''}
                         onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
+                        className="w-full p-2 border rounded mb-6"
+                        rows="3"
+                        maxlength="1000"
                         required
-                      >
-                        <option value="">Select Department That Owns This Course</option>
-                        {departments && departments.map && departments.map(dept => (
-                          <option key={dept._id} value={dept._id}>{dept.name}</option>
-                        ))}
-                      </select>
+                      />
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input
-                          type="number"
-                          name="level"
-                          placeholder="Base Level (100-800)"
-                          value={formData.level || ''}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                          min="100"
-                          max="800"
-                          required
-                        />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <input
                           type="number"
                           name="credit"
@@ -1462,20 +1450,19 @@ const AdminPage = () => {
                           max="6"
                           required
                         />
+                        <input
+                          type="text"
+                          name="faculty"
+                          placeholder="Faculty (e.g., Science, Engineering)"
+                          value={formData.faculty || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          required
+                        />
                       </div>
 
-                      <textarea
-                        name="description"
-                        placeholder="Course Description"
-                        value={formData.description || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                        rows="3"
-                        maxlength="1000"
-                        required
-                      />
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Prerequisites and Corequisites */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <input
                           type="text"
                           name="prerequisites"
@@ -1504,8 +1491,98 @@ const AdminPage = () => {
                         />
                       </div>
 
-                      <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded border-l-4 border-blue-400">
-                        <strong>Note:</strong> The department you select above will own this course. Other departments can later "borrow" this course for their students, but this department will be the primary owner.
+                      {/* Department Offerings Configuration */}
+                      <div className="border-t pt-6">
+                        <h4 className="text-md font-semibold text-gray-800 mb-4">Department Offerings</h4>
+                        <p className="text-sm text-gray-600 mb-4">Configure which departments can offer this course and at which levels.</p>
+
+                        {/* Render existing department offerings */}
+                        {formData.departments_offering && formData.departments_offering.map((offering, index) => (
+                          <div key={index} className="bg-gray-50 p-4 rounded-lg mb-4 border">
+                            <div className="flex justify-between items-center mb-3">
+                              <h5 className="font-medium text-gray-700">Offering #{index + 1}</h5>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newOfferings = formData.departments_offering.filter((_, i) => i !== index);
+                                  setFormData(prev => ({ ...prev, departments_offering: newOfferings }));
+                                }}
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                Remove
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <select
+                                value={offering.department || ''}
+                                onChange={(e) => {
+                                  const newOfferings = [...formData.departments_offering];
+                                  newOfferings[index].department = e.target.value;
+                                  setFormData(prev => ({ ...prev, departments_offering: newOfferings }));
+                                }}
+                                className="w-full p-2 border rounded"
+                                required
+                              >
+                                <option value="">Select Department</option>
+                                {departments && departments.map && departments.map(dept => (
+                                  <option key={dept._id} value={dept._id}>{dept.name}</option>
+                                ))}
+                              </select>
+
+                              <input
+                                type="number"
+                                placeholder="Level (100-800)"
+                                value={offering.level || ''}
+                                onChange={(e) => {
+                                  const newOfferings = [...formData.departments_offering];
+                                  newOfferings[index].level = parseInt(e.target.value);
+                                  setFormData(prev => ({ ...prev, departments_offering: newOfferings }));
+                                }}
+                                className="w-full p-2 border rounded"
+                                min="100"
+                                max="800"
+                                required
+                              />
+                            </div>
+
+                            {/* Lecturer selection for this offering */}
+                            <div className="mt-3">
+                              <select
+                                value={offering.lecturerId || ''}
+                                onChange={(e) => {
+                                  const newOfferings = [...formData.departments_offering];
+                                  newOfferings[index].lecturerId = e.target.value;
+                                  setFormData(prev => ({ ...prev, departments_offering: newOfferings }));
+                                }}
+                                className="w-full p-2 border rounded"
+                              >
+                                <option value="">Select Lecturer (Optional)</option>
+                                {users && users.filter && users.filter(u => u.role === 'lecturer_admin').map(lecturer => (
+                                  <option key={lecturer._id} value={lecturer._id}>{lecturer.name} ({lecturer.staffId})</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Add new offering button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newOffering = { department: '', level: '', lecturerId: '' };
+                            const newOfferings = [...(formData.departments_offering || []), newOffering];
+                            setFormData(prev => ({ ...prev, departments_offering: newOfferings }));
+                          }}
+                          className="w-full bg-blue-50 text-blue-600 border-2 border-dashed border-blue-300 rounded-lg p-4 hover:bg-blue-100 flex items-center justify-center gap-2"
+                        >
+                          <Plus className="w-5 h-5" />
+                          Add Department Offering
+                        </button>
+                      </div>
+
+                      <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded border-l-4 border-blue-400 mt-6">
+                        <strong>Note:</strong> You can add multiple departments and configure different levels for each. Each department can offer this course at different levels with different lecturers assigned.
                       </div>
                     </>
                   )}
