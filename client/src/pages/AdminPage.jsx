@@ -951,7 +951,7 @@ const AdminPage = () => {
                         className="w-full p-2 border rounded"
                       >
                         <option value="">Select Departmental Admin (Optional)</option>
-                        {users.filter(u => u.role === 'departmental_admin').map(admin => (
+                        {users && users.filter && users.filter(u => u.role === 'departmental_admin').map(admin => (
                           <option key={admin._id} value={admin._id}>{admin.name}</option>
                         ))}
                       </select>
@@ -1020,7 +1020,7 @@ const AdminPage = () => {
                           className="w-full p-2 border rounded"
                         >
                           <option value="">Select Lecturer (Optional)</option>
-                          {users.filter(u => u.role === 'lecturer_admin').map(lecturer => (
+                          {users && users.filter && users.filter(u => u.role === 'lecturer_admin').map(lecturer => (
                             <option key={lecturer._id} value={lecturer._id}>{lecturer.name}</option>
                           ))}
                         </select>
