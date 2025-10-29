@@ -231,7 +231,7 @@ router.get('/courses', async (req, res) => {
       // Departmental admin sees courses in their department
       query.department = user.department;
     } else if (user.role === 'lecturer_admin') {
-      // Lecturer admin sees only their courses
+      // Lecturer admin sees only their assigned courses
       query.lecturerId = user._id;
     }
     // System admin and bursary admin see all courses
@@ -251,8 +251,11 @@ router.post('/courses', async (req, res) => {
   try {
     const user = req.user;
 
-    // Check permissions
-    if (user.role === 'departmental_admin') {
+    // Check permissions based on course management flow
+    if (user.role === 'system_admin') {
+      // System admin can create global courses
+      // No restrictions
+    } else if (user.role === 'departmental_admin') {
       // Departmental admin can only create courses in their department
       if (req.body.department !== user.department?.toString()) {
         return res.status(403).json({
@@ -260,12 +263,14 @@ router.post('/courses', async (req, res) => {
           message: 'You can only create courses in your department'
         });
       }
+      // Departmental admin can assign any lecturer (internal or external)
+      // lecturerId can be any valid lecturer
     } else if (user.role === 'lecturer_admin') {
-      // Lecturer admin can only create courses they teach
+      // Lecturer admin can only create courses they are assigned to teach
       if (req.body.lecturerId !== user._id.toString()) {
         return res.status(403).json({
           success: false,
-          message: 'You can only create courses you teach'
+          message: 'You can only create courses you are assigned to teach'
         });
       }
     } else if (!['system_admin', 'bursary_admin'].includes(user.role)) {
@@ -293,21 +298,25 @@ router.put('/courses/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
 
-    // Check permissions
-    if (user.role === 'departmental_admin') {
+    // Check permissions based on course management flow
+    if (user.role === 'system_admin') {
+      // System admin can edit any course
+    } else if (user.role === 'departmental_admin') {
       if (course.department.toString() !== user.department?.toString()) {
         return res.status(403).json({
           success: false,
           message: 'You can only edit courses in your department'
         });
       }
+      // Departmental admin can change lecturer assignments within their department
     } else if (user.role === 'lecturer_admin') {
       if (course.lecturerId?.toString() !== user._id.toString()) {
         return res.status(403).json({
           success: false,
-          message: 'You can only edit courses you teach'
+          message: 'You can only edit courses you are assigned to teach'
         });
       }
+      // Lecturer admin can only edit their own assigned courses
     } else if (!['system_admin', 'bursary_admin'].includes(user.role)) {
       return res.status(403).json({
         success: false,
@@ -332,21 +341,25 @@ router.delete('/courses/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
 
-    // Check permissions
-    if (user.role === 'departmental_admin') {
+    // Check permissions based on course management flow
+    if (user.role === 'system_admin') {
+      // System admin can delete any course
+    } else if (user.role === 'departmental_admin') {
       if (course.department.toString() !== user.department?.toString()) {
         return res.status(403).json({
           success: false,
           message: 'You can only delete courses in your department'
         });
       }
+      // Departmental admin can delete courses in their department
     } else if (user.role === 'lecturer_admin') {
       if (course.lecturerId?.toString() !== user._id.toString()) {
         return res.status(403).json({
           success: false,
-          message: 'You can only delete courses you teach'
+          message: 'You can only delete courses you are assigned to teach'
         });
       }
+      // Lecturer admin can only delete their own assigned courses
     } else if (!['system_admin', 'bursary_admin'].includes(user.role)) {
       return res.status(403).json({
         success: false,
@@ -456,11 +469,10 @@ router.get('/stats', async (req, res) => {
       stats.departmentCourses = deptCourses;
     }
 
-    // Lecturer admin stats for their courses
+    // Lecturer admin stats for their assigned courses
     if (user.role === 'lecturer_admin') {
-      const lecturerCourses = user.courses || [];
-      const courseStudents = await Course.find({ _id: { $in: lecturerCourses } }).select('students');
-      const totalStudents = courseStudents.reduce((sum, course) => sum + (course.students?.length || 0), 0);
+      const lecturerCourses = await Course.find({ lecturerId: user._id });
+      const totalStudents = lecturerCourses.reduce((sum, course) => sum + (course.students?.length || 0), 0);
       stats.myCourses = lecturerCourses.length;
       stats.myStudents = totalStudents;
     }

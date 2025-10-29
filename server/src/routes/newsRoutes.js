@@ -101,9 +101,12 @@ router.post('/', async (req, res) => {
         break;
 
       case 'course_specific':
-        // Lecturer admin can post to their courses
+        // Lecturer admin can post to their assigned courses
         if (user.role === 'lecturer_admin') {
-          if (!course || !user.courses?.includes(course)) {
+          // Check if the course is assigned to this lecturer
+          const Course = require('../models/Course');
+          const assignedCourse = await Course.findOne({ _id: course, lecturerId: user._id });
+          if (!assignedCourse) {
             return res.status(403).json({
               success: false,
               message: 'You can only post to your assigned courses'
@@ -308,11 +311,15 @@ router.get('/admin/all', async (req, res) => {
         };
         break;
       case 'lecturer_admin':
-        // Can see course news and their own posts
+        // Can see course news for their assigned courses and their own posts
+        const Course = require('../models/Course');
+        const assignedCourses = await Course.find({ lecturerId: user._id }).select('_id');
+        const courseIds = assignedCourses.map(c => c._id);
+
         query = {
           $or: [
             { authorId: user._id },
-            { audience: 'course_specific', course: { $in: user.courses || [] } }
+            { audience: 'course_specific', course: { $in: courseIds } }
           ]
         };
         break;

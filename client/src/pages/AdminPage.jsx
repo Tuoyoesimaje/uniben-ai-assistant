@@ -346,15 +346,26 @@ const AdminPage = () => {
 
               {/* Departmental Admin */}
               {user.role === 'departmental_admin' && (
-                <button
-                  onClick={() => setActiveTab('news')}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
-                    activeTab === 'news' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <Newspaper className="w-5 h-5" />
-                  Department News
-                </button>
+                <>
+                  <button
+                    onClick={() => setActiveTab('courses')}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
+                      activeTab === 'courses' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <BookOpen className="w-5 h-5" />
+                    Department Courses
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('news')}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
+                      activeTab === 'news' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Newspaper className="w-5 h-5" />
+                    Department News
+                  </button>
+                </>
               )}
 
               {/* Lecturer Admin */}
@@ -702,6 +713,10 @@ const AdminPage = () => {
               </div>
             )}
 
+            {activeTab === 'news' && ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin'].includes(user.role) && (
+              <NewsManagementTab user={user} />
+            )}
+
             {activeTab === 'news-management' && ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin'].includes(user.role) && (
               <NewsManagementTab user={user} />
             )}
@@ -710,7 +725,7 @@ const AdminPage = () => {
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <h2 className="text-xl font-semibold text-gray-900">
-                    {user.role === 'lecturer_admin' ? 'My Courses' : 'Course Management'}
+                    {user.role === 'lecturer_admin' ? 'My Assigned Courses' : user.role === 'departmental_admin' ? 'Department Courses' : 'Course Management'}
                   </h2>
                   <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                     <input
@@ -729,6 +744,15 @@ const AdminPage = () => {
                         Add Course
                       </button>
                     )}
+                    {user.role === 'lecturer_admin' && (
+                      <button
+                        onClick={() => openModal('course')}
+                        className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 flex items-center gap-2 w-full sm:w-auto"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Create Course
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="p-6">
@@ -741,6 +765,7 @@ const AdminPage = () => {
                           <th className="text-left py-3 px-4 font-medium text-gray-700">Department</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-700">Lecturer</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-700">Level</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Students</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                         </tr>
                       </thead>
@@ -750,8 +775,9 @@ const AdminPage = () => {
                             <td className="py-3 px-4 font-mono text-sm">{course.code}</td>
                             <td className="py-3 px-4">{course.title}</td>
                             <td className="py-3 px-4">{course.department?.name || 'N/A'}</td>
-                            <td className="py-3 px-4">{course.lecturerId?.name || course.lecturer?.name || 'N/A'}</td>
+                            <td className="py-3 px-4">{course.lecturerId?.name || course.lecturer?.name || 'Not Assigned'}</td>
                             <td className="py-3 px-4">{course.level}</td>
+                            <td className="py-3 px-4">{course.students?.length || 0}</td>
                             <td className="py-3 px-4">
                               <div className="flex gap-2">
                                 <button
@@ -1056,11 +1082,16 @@ const AdminPage = () => {
                         onChange={handleInputChange}
                         className="w-full p-2 border rounded"
                         required
+                        disabled={user.role === 'departmental_admin'} // Departmental admin can't change department
                       >
                         <option value="">Select Department</option>
-                        {departments && departments.map && departments.map(dept => (
-                          <option key={dept._id} value={dept._id}>{dept.name}</option>
-                        ))}
+                        {departments && departments.map && departments.map(dept => {
+                          // Departmental admin can only select their own department
+                          if (user.role === 'departmental_admin' && user.department && dept._id !== user.department) {
+                            return null;
+                          }
+                          return <option key={dept._id} value={dept._id}>{dept.name}</option>;
+                        })}
                       </select>
                       <input
                         type="number"
@@ -1084,7 +1115,8 @@ const AdminPage = () => {
                         max="6"
                         required
                       />
-                      {user.role === 'system_admin' && (
+                      {/* Lecturer assignment based on role */}
+                      {(user.role === 'system_admin' || user.role === 'departmental_admin') && (
                         <select
                           name="lecturerId"
                           value={formData.lecturerId || ''}
@@ -1093,9 +1125,14 @@ const AdminPage = () => {
                         >
                           <option value="">Select Lecturer (Optional)</option>
                           {users && users.filter && users.filter(u => u.role === 'lecturer_admin').map(lecturer => (
-                            <option key={lecturer._id} value={lecturer._id}>{lecturer.name}</option>
+                            <option key={lecturer._id} value={lecturer._id}>{lecturer.name} ({lecturer.staffId})</option>
                           ))}
                         </select>
+                      )}
+                      {user.role === 'lecturer_admin' && (
+                        <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                          <strong>Note:</strong> You can only create courses that will be assigned to you as the lecturer.
+                        </div>
                       )}
                     </>
                   )}

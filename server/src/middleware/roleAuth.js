@@ -113,9 +113,15 @@ const requireCourseAccess = async (req, res, next) => {
 
     // Departmental admin can access courses in their department
     if (user.role === 'departmental_admin') {
-      // This would need to check if the course belongs to the admin's department
-      // For now, allow and let the route handler do the detailed check
-      return next();
+      const Course = require('../models/Course');
+      const course = await Course.findById(courseId);
+      if (course && course.department.toString() === user.department?.toString()) {
+        return next();
+      }
+      return res.status(403).json({
+        success: false,
+        message: 'You can only access courses in your department'
+      });
     }
 
     // Other roles cannot access course-specific data
