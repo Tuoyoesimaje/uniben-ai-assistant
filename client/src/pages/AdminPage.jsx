@@ -883,15 +883,26 @@ const AdminPage = () => {
                 <div className="space-y-4">
                   {modalType === 'user' && user.role === 'system_admin' && (
                     <>
-                      <input
-                        type="text"
-                        name="name"
-                        placeholder="Full Name"
-                        value={formData.name || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                        required
-                      />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          name="name"
+                          placeholder="Full Name"
+                          value={formData.name || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          required
+                        />
+                        <input
+                          type="email"
+                          name="email"
+                          placeholder="Email (Optional)"
+                          value={formData.email || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                        />
+                      </div>
+
                       <select
                         name="role"
                         value={formData.role || ''}
@@ -907,141 +918,252 @@ const AdminPage = () => {
                         <option value="staff">Staff</option>
                         <option value="student">Student</option>
                       </select>
+
                       {(formData.role === 'student' || formData.role === 'staff' || ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin'].includes(formData.role)) && (
                         <>
-                          {formData.role === 'student' && (
-                            <input
-                              type="text"
-                              name="matricNumber"
-                              placeholder="Matric Number (e.g., CSC/18/1234)"
-                              value={formData.matricNumber || ''}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {formData.role === 'student' && (
+                              <input
+                                type="text"
+                                name="matricNumber"
+                                placeholder="Matric Number (e.g., CSC/18/1234)"
+                                value={formData.matricNumber || ''}
+                                onChange={handleInputChange}
+                                className="w-full p-2 border rounded"
+                                required
+                              />
+                            )}
+                            {(formData.role === 'staff' || ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin'].includes(formData.role)) && (
+                              <input
+                                type="text"
+                                name="staffId"
+                                placeholder="Staff ID (e.g., STAFF-1234)"
+                                value={formData.staffId || ''}
+                                onChange={handleInputChange}
+                                className="w-full p-2 border rounded"
+                                required
+                              />
+                            )}
+                            <select
+                              name="department"
+                              value={formData.department || ''}
                               onChange={handleInputChange}
                               className="w-full p-2 border rounded"
-                              required
-                            />
-                          )}
-                          {(formData.role === 'staff' || ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin'].includes(formData.role)) && (
-                            <input
-                              type="text"
-                              name="staffId"
-                              placeholder="Staff ID (e.g., STAFF-1234)"
-                              value={formData.staffId || ''}
-                              onChange={handleInputChange}
-                              className="w-full p-2 border rounded"
-                              required
-                            />
-                          )}
-                          <select
-                            name="department"
-                            value={formData.department || ''}
-                            onChange={handleInputChange}
-                            className="w-full p-2 border rounded"
-                          >
-                            <option value="">Select Department (Optional)</option>
-                            {departments.map(dept => (
-                              <option key={dept._id} value={dept._id}>{dept.name}</option>
-                            ))}
-                          </select>
+                            >
+                              <option value="">Select Department (Optional)</option>
+                              {departments.map(dept => (
+                                <option key={dept._id} value={dept._id}>{dept.name}</option>
+                              ))}
+                            </select>
+                          </div>
                         </>
                       )}
-                      <input
-                        type="email"
-                        name="email"
-                        placeholder="Email (Optional)"
-                        value={formData.email || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                      />
+
+                      {formData.role && (
+                        <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                          <strong>Role Information:</strong><br />
+                          {formData.role === 'system_admin' && 'Full system access, can manage all users and system settings'}
+                          {formData.role === 'bursary_admin' && 'Manages financial records and fee payments'}
+                          {formData.role === 'departmental_admin' && 'Manages department courses and assigns lecturers'}
+                          {formData.role === 'lecturer_admin' && 'Teaches assigned courses and manages course content'}
+                          {formData.role === 'staff' && 'General staff access with limited administrative functions'}
+                          {formData.role === 'student' && 'Student access for course enrollment and academic activities'}
+                        </div>
+                      )}
                     </>
                   )}
 
                   {modalType === 'building' && (
                     <>
-                      <input
-                        type="text"
-                        name="name"
-                        placeholder="Building Name"
-                        value={formData.name || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                        required
-                      />
-                      <input
-                        type="text"
-                        name="code"
-                        placeholder="Building Code"
-                        value={formData.code || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                        required
-                      />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          name="name"
+                          placeholder="Building Name"
+                          value={formData.name || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          required
+                        />
+                        <input
+                          type="text"
+                          name="code"
+                          placeholder="Building Code"
+                          value={formData.code || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          required
+                        />
+                      </div>
+
                       <select
                         name="department"
                         value={formData.department || ''}
                         onChange={handleInputChange}
                         className="w-full p-2 border rounded"
                       >
-                        <option value="">Select Department</option>
+                        <option value="">Select Department (Optional)</option>
                         {departments && departments.map && departments.map(dept => (
                           <option key={dept._id} value={dept._id}>{dept.name}</option>
                         ))}
                       </select>
-                      <input
-                        type="text"
-                        name="location"
-                        placeholder="Location"
-                        value={formData.location || ''}
-                        onChange={handleInputChange}
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          name="location"
+                          placeholder="Location Description"
+                          value={formData.location || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                        />
+                        <input
+                          type="text"
+                          name="category"
+                          placeholder="Category (e.g., Academic, Administrative)"
+                          value={formData.category || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          name="phone"
+                          placeholder="Building Phone"
+                          value={formData.phone || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                        />
+                        <input
+                          type="number"
+                          name="floors"
+                          placeholder="Number of Floors"
+                          value={formData.floors || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          min="1"
+                        />
+                      </div>
+
+                      <textarea
+                        name="facilities"
+                        placeholder="Facilities (comma-separated)"
+                        value={formData.facilities ? formData.facilities.join(', ') : ''}
+                        onChange={(e) => handleInputChange({
+                          target: {
+                            name: 'facilities',
+                            value: e.target.value.split(',').map(f => f.trim()).filter(f => f)
+                          }
+                        })}
                         className="w-full p-2 border rounded"
+                        rows="2"
                       />
                     </>
                   )}
 
                   {modalType === 'department' && user.role === 'system_admin' && (
                     <>
-                      <input
-                        type="text"
-                        name="name"
-                        placeholder="Department Name"
-                        value={formData.name || ''}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          name="name"
+                          placeholder="Department Name"
+                          value={formData.name || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          required
+                        />
+                        <input
+                          type="text"
+                          name="faculty"
+                          placeholder="Faculty Name"
+                          value={formData.faculty || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          required
+                        />
+                      </div>
+
+                      <textarea
+                        name="description"
+                        placeholder="Department Description"
+                        value={formData.description || ''}
                         onChange={handleInputChange}
                         className="w-full p-2 border rounded"
-                        required
+                        rows="3"
+                        maxlength="1000"
                       />
-                      <input
-                        type="text"
-                        name="faculty"
-                        placeholder="Faculty"
-                        value={formData.faculty || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                        required
-                      />
-                      <input
-                        type="text"
-                        name="hodName"
-                        placeholder="Head of Department Name"
-                        value={formData.hodName || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                        required
-                      />
-                      <input
-                        type="email"
-                        name="hodEmail"
-                        placeholder="HOD Email"
-                        value={formData.hodEmail || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                      />
-                      <input
-                        type="text"
-                        name="location"
-                        placeholder="Office Location"
-                        value={formData.location || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                      />
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          name="hodName"
+                          placeholder="Head of Department Name"
+                          value={formData.hodName || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          required
+                        />
+                        <input
+                          type="email"
+                          name="hodEmail"
+                          placeholder="HOD Email"
+                          value={formData.hodEmail || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          name="phone"
+                          placeholder="Department Phone"
+                          value={formData.phone || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                        />
+                        <input
+                          type="url"
+                          name="website"
+                          placeholder="Department Website"
+                          value={formData.website || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input
+                          type="text"
+                          name="location"
+                          placeholder="Office Location"
+                          value={formData.location || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                        />
+                        <input
+                          type="number"
+                          name="establishedYear"
+                          placeholder="Established Year"
+                          value={formData.establishedYear || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          min="1950"
+                          max={new Date().getFullYear()}
+                        />
+                        <input
+                          type="email"
+                          name="email"
+                          placeholder="Department Email"
+                          value={formData.email || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                        />
+                      </div>
+
                       <select
                         name="departmentalAdmin"
                         value={formData.departmentalAdmin || ''}
@@ -1050,32 +1172,39 @@ const AdminPage = () => {
                       >
                         <option value="">Select Departmental Admin (Optional)</option>
                         {users && users.filter && users.filter(u => u.role === 'departmental_admin').map(admin => (
-                          <option key={admin._id} value={admin._id}>{admin.name}</option>
+                          <option key={admin._id} value={admin._id}>{admin.name} ({admin.staffId})</option>
                         ))}
                       </select>
+
+                      <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded border-l-4 border-blue-400">
+                        <strong>Note:</strong> Assigning a departmental admin will give them management rights over this department's courses and can assign lecturers to courses.
+                      </div>
                     </>
                   )}
 
                   {modalType === 'course' && (user.role === 'system_admin' || user.role === 'departmental_admin' || user.role === 'lecturer_admin') && (
                     <>
-                      <input
-                        type="text"
-                        name="code"
-                        placeholder="Course Code (e.g., CSC 201)"
-                        value={formData.code || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                        required
-                      />
-                      <input
-                        type="text"
-                        name="title"
-                        placeholder="Course Title"
-                        value={formData.title || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                        required
-                      />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          name="code"
+                          placeholder="Course Code (e.g., CSC 201)"
+                          value={formData.code || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          required
+                        />
+                        <input
+                          type="text"
+                          name="title"
+                          placeholder="Course Title"
+                          value={formData.title || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          required
+                        />
+                      </div>
+
                       <select
                         name="department"
                         value={formData.department || ''}
@@ -1093,28 +1222,42 @@ const AdminPage = () => {
                           return <option key={dept._id} value={dept._id}>{dept.name}</option>;
                         })}
                       </select>
-                      <input
-                        type="number"
-                        name="level"
-                        placeholder="Level (100-800)"
-                        value={formData.level || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                        min="100"
-                        max="800"
-                        required
-                      />
-                      <input
-                        type="number"
-                        name="credit"
-                        placeholder="Credit Hours"
-                        value={formData.credit || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                        min="1"
-                        max="6"
-                        required
-                      />
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input
+                          type="number"
+                          name="level"
+                          placeholder="Level (100-800)"
+                          value={formData.level || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          min="100"
+                          max="800"
+                          required
+                        />
+                        <input
+                          type="number"
+                          name="credit"
+                          placeholder="Credit Hours (1-6)"
+                          value={formData.credit || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          min="1"
+                          max="6"
+                          required
+                        />
+                        <select
+                          name="semester"
+                          value={formData.semester || 'both'}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                        >
+                          <option value="first">First Semester</option>
+                          <option value="second">Second Semester</option>
+                          <option value="both">Both Semesters</option>
+                        </select>
+                      </div>
+
                       {/* Lecturer assignment based on role */}
                       {(user.role === 'system_admin' || user.role === 'departmental_admin') && (
                         <select
@@ -1129,9 +1272,58 @@ const AdminPage = () => {
                           ))}
                         </select>
                       )}
+
+                      <textarea
+                        name="description"
+                        placeholder="Course Description (Optional)"
+                        value={formData.description || ''}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border rounded"
+                        rows="3"
+                        maxlength="1000"
+                      />
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          name="prerequisites"
+                          placeholder="Prerequisites (comma-separated codes)"
+                          value={formData.prerequisites ? formData.prerequisites.join(', ') : ''}
+                          onChange={(e) => handleInputChange({
+                            target: {
+                              name: 'prerequisites',
+                              value: e.target.value.split(',').map(p => p.trim()).filter(p => p)
+                            }
+                          })}
+                          className="w-full p-2 border rounded"
+                        />
+                        <input
+                          type="text"
+                          name="corequisites"
+                          placeholder="Corequisites (comma-separated codes)"
+                          value={formData.corequisites ? formData.corequisites.join(', ') : ''}
+                          onChange={(e) => handleInputChange({
+                            target: {
+                              name: 'corequisites',
+                              value: e.target.value.split(',').map(c => c.trim()).filter(c => c)
+                            }
+                          })}
+                          className="w-full p-2 border rounded"
+                        />
+                      </div>
+
+                      <input
+                        type="text"
+                        name="schedule"
+                        placeholder="Schedule (e.g., Mon/Wed 10:00-11:00)"
+                        value={formData.schedule || ''}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border rounded"
+                      />
+
                       {user.role === 'lecturer_admin' && (
-                        <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                          <strong>Note:</strong> You can only create courses that will be assigned to you as the lecturer.
+                        <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded border-l-4 border-blue-400">
+                          <strong>Note:</strong> This course will be automatically assigned to you as the lecturer.
                         </div>
                       )}
                     </>
@@ -1148,17 +1340,94 @@ const AdminPage = () => {
                         className="w-full p-2 border rounded"
                         required
                       />
+
                       <select
                         name="course"
                         value={formData.course || ''}
                         onChange={handleInputChange}
                         className="w-full p-2 border rounded"
+                        required
                       >
                         <option value="">Select Course</option>
                         {courses && courses.map && courses.map(course => (
-                          <option key={course._id} value={course._id}>{course.title || course.name}</option>
+                          <option key={course._id} value={course._id}>{course.code} - {course.title}</option>
                         ))}
                       </select>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input
+                          type="number"
+                          name="duration"
+                          placeholder="Duration (minutes)"
+                          value={formData.duration || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          min="5"
+                          max="180"
+                        />
+                        <input
+                          type="number"
+                          name="totalQuestions"
+                          placeholder="Total Questions"
+                          value={formData.totalQuestions || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          min="1"
+                          max="100"
+                        />
+                        <input
+                          type="number"
+                          name="passingScore"
+                          placeholder="Passing Score (%)"
+                          value={formData.passingScore || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          min="0"
+                          max="100"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <select
+                          name="difficulty"
+                          value={formData.difficulty || 'medium'}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                        >
+                          <option value="easy">Easy</option>
+                          <option value="medium">Medium</option>
+                          <option value="hard">Hard</option>
+                        </select>
+                        <input
+                          type="datetime-local"
+                          name="scheduledDate"
+                          value={formData.scheduledDate || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          name="isActive"
+                          checked={formData.isActive !== undefined ? formData.isActive : true}
+                          onChange={(e) => handleInputChange({
+                            target: { name: 'isActive', value: e.target.checked }
+                          })}
+                          className="w-4 h-4"
+                        />
+                        <label className="text-sm text-gray-700">Quiz is active</label>
+                      </div>
+
+                      <textarea
+                        name="instructions"
+                        placeholder="Quiz Instructions (Optional)"
+                        value={formData.instructions || ''}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border rounded"
+                        rows="3"
+                      />
                     </>
                   )}
                 </div>
