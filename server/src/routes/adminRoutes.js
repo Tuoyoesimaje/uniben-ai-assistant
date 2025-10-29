@@ -227,18 +227,26 @@ router.get('/courses', async (req, res) => {
     let query = {};
 
     // Filter courses based on role
-    if (user.role === 'departmental_admin') {
-      // Departmental admin sees courses in their department
-      query.department = user.department;
+    if (user.role === 'system_admin') {
+      // System admin sees all global courses
+      // No filter - sees all courses
+    } else if (user.role === 'departmental_admin') {
+      // Departmental admin sees courses offered by their department
+      query.departments_offering = {
+        $elemMatch: { department: user.department }
+      };
     } else if (user.role === 'lecturer_admin') {
-      // Lecturer admin sees only their assigned courses
-      query.lecturerId = user._id;
+      // Lecturer admin sees courses they are assigned to teach
+      query.departments_offering = {
+        $elemMatch: { lecturerId: user._id }
+      };
     }
-    // System admin and bursary admin see all courses
+    // Bursary admin and staff see all courses
 
     const courses = await Course.find(query)
       .populate('department', 'name')
-      .populate('lecturerId', 'name staffId')
+      .populate('departments_offering.department', 'name')
+      .populate('departments_offering.lecturerId', 'name staffId')
       .populate('prerequisites', 'code title')
       .sort({ code: 1 });
     res.json({ success: true, courses });
@@ -254,25 +262,19 @@ router.post('/courses', async (req, res) => {
     // Check permissions based on course management flow
     if (user.role === 'system_admin') {
       // System admin can create global courses
-      // No restrictions
+      // No restrictions - creates the base course template
     } else if (user.role === 'departmental_admin') {
-      // Departmental admin can only create courses in their department
-      if (req.body.department !== user.department?.toString()) {
-        return res.status(403).json({
-          success: false,
-          message: 'You can only create courses in your department'
-        });
-      }
-      // Departmental admin can assign any lecturer (internal or external)
-      // lecturerId can be any valid lecturer
+      // Departmental admin can only add offerings to existing courses
+      return res.status(403).json({
+        success: false,
+        message: 'Departmental admins should use PUT to add department offerings to existing courses'
+      });
     } else if (user.role === 'lecturer_admin') {
-      // Lecturer admin can only create courses they are assigned to teach
-      if (req.body.lecturerId !== user._id.toString()) {
-        return res.status(403).json({
-          success: false,
-          message: 'You can only create courses you are assigned to teach'
-        });
-      }
+      // Lecturer admin cannot create courses
+      return res.status(403).json({
+        success: false,
+        message: 'Lecturer admins cannot create courses. Contact your departmental admin.'
+      });
     } else if (!['system_admin', 'bursary_admin'].includes(user.role)) {
       return res.status(403).json({
         success: false,
@@ -282,7 +284,7 @@ router.post('/courses', async (req, res) => {
 
     const course = new Course(req.body);
     await course.save();
-    await course.populate(['department', 'lecturerId', 'prerequisites']);
+    await course.populate(['department', 'departments_offering.department', 'departments_offering.lecturerId', 'prerequisites']);
     res.status(201).json({ success: true, course });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error' });
@@ -300,33 +302,86 @@ router.put('/courses/:id', async (req, res) => {
 
     // Check permissions based on course management flow
     if (user.role === 'system_admin') {
-      // System admin can edit any course
+      // System admin can edit global course details
+      const updatedCourse = await Course.findByIdAndUpdate(req.params.id, req.body, { new: true })
+        .populate(['department', 'departments_offering.department', 'departments_offering.lecturerId', 'prerequisites']);
+      res.json({ success: true, course: updatedCourse });
     } else if (user.role === 'departmental_admin') {
-      if (course.department.toString() !== user.department?.toString()) {
-        return res.status(403).json({
-          success: false,
-          message: 'You can only edit courses in your department'
+      // Departmental admin can add/modify offerings for their department
+      const { departments_offering, ...otherUpdates } = req.body;
+
+      if (departments_offering) {
+        // Validate that all offerings are for their department
+        const invalidOfferings = departments_offering.filter(offering =>
+          offering.department.toString() !== user.department?.toString()
+        );
+
+        if (invalidOfferings.length > 0) {
+          return res.status(403).json({
+            success: false,
+            message: 'You can only manage offerings for your department'
+          });
+        }
+
+        // Add or update department offerings
+        const updatedOfferings = [...(course.departments_offering || [])];
+
+        departments_offering.forEach(newOffering => {
+          const existingIndex = updatedOfferings.findIndex(offering =>
+            offering.department.toString() === newOffering.department &&
+            offering.level === newOffering.level
+          );
+
+          if (existingIndex >= 0) {
+            // Update existing offering
+            updatedOfferings[existingIndex] = { ...updatedOfferings[existingIndex], ...newOffering };
+          } else {
+            // Add new offering
+            updatedOfferings.push(newOffering);
+          }
         });
+
+        const updatedCourse = await Course.findByIdAndUpdate(
+          req.params.id,
+          { departments_offering: updatedOfferings, ...otherUpdates },
+          { new: true }
+        ).populate(['department', 'departments_offering.department', 'departments_offering.lecturerId', 'prerequisites']);
+
+        res.json({ success: true, course: updatedCourse });
+      } else {
+        // Regular update for other fields
+        const updatedCourse = await Course.findByIdAndUpdate(req.params.id, req.body, { new: true })
+          .populate(['department', 'departments_offering.department', 'departments_offering.lecturerId', 'prerequisites']);
+        res.json({ success: true, course: updatedCourse });
       }
-      // Departmental admin can change lecturer assignments within their department
     } else if (user.role === 'lecturer_admin') {
-      if (course.lecturerId?.toString() !== user._id.toString()) {
+      // Lecturer admin can only update their assigned course offerings
+      const userOffering = course.departments_offering?.find(offering =>
+        offering.lecturerId?.toString() === user._id.toString()
+      );
+
+      if (!userOffering) {
         return res.status(403).json({
           success: false,
           message: 'You can only edit courses you are assigned to teach'
         });
       }
-      // Lecturer admin can only edit their own assigned courses
+
+      // Allow updates to syllabus, announcements, resources, etc. for their specific offering
+      const { syllabus, announcements, resources, ...otherUpdates } = req.body;
+
+      const updatedCourse = await Course.findByIdAndUpdate(req.params.id, {
+        syllabus, announcements, resources, ...otherUpdates
+      }, { new: true })
+        .populate(['department', 'departments_offering.department', 'departments_offering.lecturerId', 'prerequisites']);
+
+      res.json({ success: true, course: updatedCourse });
     } else if (!['system_admin', 'bursary_admin'].includes(user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Insufficient permissions to edit courses'
       });
     }
-
-    const updatedCourse = await Course.findByIdAndUpdate(req.params.id, req.body, { new: true })
-      .populate(['department', 'lecturerId', 'prerequisites']);
-    res.json({ success: true, course: updatedCourse });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error' });
   }
@@ -469,11 +524,22 @@ router.get('/stats', async (req, res) => {
       stats.departmentCourses = deptCourses;
     }
 
-    // Lecturer admin stats for their assigned courses
+    // Lecturer admin stats for their assigned course offerings
     if (user.role === 'lecturer_admin') {
-      const lecturerCourses = await Course.find({ lecturerId: user._id });
-      const totalStudents = lecturerCourses.reduce((sum, course) => sum + (course.students?.length || 0), 0);
-      stats.myCourses = lecturerCourses.length;
+      const lecturerOfferings = await Course.find({
+        departments_offering: {
+          $elemMatch: { lecturerId: user._id }
+        }
+      });
+
+      const totalStudents = lecturerOfferings.reduce((sum, course) => {
+        const userOffering = course.departments_offering?.find(offering =>
+          offering.lecturerId?.toString() === user._id.toString()
+        );
+        return sum + (userOffering?.students?.length || 0);
+      }, 0);
+
+      stats.myCourses = lecturerOfferings.length;
       stats.myStudents = totalStudents;
     }
 

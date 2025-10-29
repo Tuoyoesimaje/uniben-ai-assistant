@@ -39,6 +39,11 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course'
   }],
+  studentLevel: {
+    type: Number,
+    min: [100, 'Student level must be at least 100'],
+    max: [800, 'Student level cannot exceed 800']
+  },
   permissions: {
     type: Object,
     default: {}

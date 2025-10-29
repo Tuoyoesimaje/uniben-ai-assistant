@@ -25,6 +25,36 @@ const courseSchema = new mongoose.Schema({
     ref: 'Department',
     required: [true, 'Department is required']
   },
+  departments_offering: [{
+    department: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Department',
+      required: true
+    },
+    level: {
+      type: Number,
+      required: true,
+      min: [100, 'Level must be at least 100'],
+      max: [800, 'Level cannot exceed 800']
+    },
+    lecturerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    schedule: {
+      type: String,
+      trim: true
+    },
+    semester: {
+      type: String,
+      enum: ['first', 'second', 'both'],
+      default: 'both'
+    },
+    isActive: {
+      type: Boolean,
+      default: true
+    }
+  }],
   faculty: {
     type: String,
     required: [true, 'Faculty is required'],

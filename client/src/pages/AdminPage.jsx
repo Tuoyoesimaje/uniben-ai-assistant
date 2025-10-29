@@ -71,7 +71,9 @@ const AdminPage = () => {
 
         // Departmental admin gets department-specific data
         else if (user.role === 'departmental_admin') {
+          requests.push(fetch('/api/admin/buildings', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
           requests.push(fetch('/api/admin/courses', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+          requests.push(fetch('/api/admin/users', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })); // Need users for lecturer selection
           requests.push(fetch('/api/news/admin/all', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
         }
 
@@ -143,12 +145,15 @@ const AdminPage = () => {
         }
 
         else if (user.role === 'departmental_admin') {
-          // Departmental admin: stats, buildings, courses, news
+          // Departmental admin: stats, buildings, courses, users, news
           const buildingsData = data[dataIndex++];
           if (buildingsData && buildingsData.success) setBuildings(buildingsData.buildings || []);
 
           const coursesData = data[dataIndex++];
           if (coursesData && coursesData.success) setCourses(coursesData.courses || []);
+
+          const usersData = data[dataIndex++];
+          if (usersData && usersData.success) setUsers(usersData.users || []);
 
           const newsData = data[dataIndex++];
           if (newsData && newsData.success) setNews(newsData.news || []);
@@ -923,15 +928,28 @@ const AdminPage = () => {
                         <>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {formData.role === 'student' && (
-                              <input
-                                type="text"
-                                name="matricNumber"
-                                placeholder="Matric Number (e.g., CSC/18/1234)"
-                                value={formData.matricNumber || ''}
-                                onChange={handleInputChange}
-                                className="w-full p-2 border rounded"
-                                required
-                              />
+                              <>
+                                <input
+                                  type="text"
+                                  name="matricNumber"
+                                  placeholder="Matric Number (e.g., CSC/18/1234)"
+                                  value={formData.matricNumber || ''}
+                                  onChange={handleInputChange}
+                                  className="w-full p-2 border rounded"
+                                  required
+                                />
+                                <input
+                                  type="number"
+                                  name="studentLevel"
+                                  placeholder="Student Level (100-800)"
+                                  value={formData.studentLevel || ''}
+                                  onChange={handleInputChange}
+                                  className="w-full p-2 border rounded"
+                                  min="100"
+                                  max="800"
+                                  required
+                                />
+                              </>
                             )}
                             {(formData.role === 'staff' || ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin'].includes(formData.role)) && (
                               <input
@@ -1184,93 +1202,205 @@ const AdminPage = () => {
 
                   {modalType === 'course' && (user.role === 'system_admin' || user.role === 'departmental_admin' || user.role === 'lecturer_admin') && (
                     <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input
-                          type="text"
-                          name="code"
-                          placeholder="Course Code (e.g., CSC 201)"
-                          value={formData.code || ''}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                          required
-                        />
-                        <input
-                          type="text"
-                          name="title"
-                          placeholder="Course Title"
-                          value={formData.title || ''}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                          required
-                        />
-                      </div>
+                      {user.role === 'system_admin' && (
+                        <>
+                          <div className="text-lg font-semibold text-green-700 mb-4">Create Global Course Template</div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input
+                              type="text"
+                              name="code"
+                              placeholder="Course Code (e.g., CSC 201)"
+                              value={formData.code || ''}
+                              onChange={handleInputChange}
+                              className="w-full p-2 border rounded"
+                              required
+                            />
+                            <input
+                              type="text"
+                              name="title"
+                              placeholder="Course Title"
+                              value={formData.title || ''}
+                              onChange={handleInputChange}
+                              className="w-full p-2 border rounded"
+                              required
+                            />
+                          </div>
 
-                      <select
-                        name="department"
-                        value={formData.department || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                        required
-                        disabled={user.role === 'departmental_admin'} // Departmental admin can't change department
-                      >
-                        <option value="">Select Department</option>
-                        {departments && departments.map && departments.map(dept => {
-                          // Departmental admin can only select their own department
-                          if (user.role === 'departmental_admin' && user.department && dept._id !== user.department) {
-                            return null;
-                          }
-                          return <option key={dept._id} value={dept._id}>{dept.name}</option>;
-                        })}
-                      </select>
+                          <select
+                            name="department"
+                            value={formData.department || ''}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border rounded"
+                            required
+                          >
+                            <option value="">Select Department</option>
+                            {departments && departments.map && departments.map(dept => (
+                              <option key={dept._id} value={dept._id}>{dept.name}</option>
+                            ))}
+                          </select>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <input
-                          type="number"
-                          name="level"
-                          placeholder="Level (100-800)"
-                          value={formData.level || ''}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                          min="100"
-                          max="800"
-                          required
-                        />
-                        <input
-                          type="number"
-                          name="credit"
-                          placeholder="Credit Hours (1-6)"
-                          value={formData.credit || ''}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                          min="1"
-                          max="6"
-                          required
-                        />
-                        <select
-                          name="semester"
-                          value={formData.semester || 'both'}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                        >
-                          <option value="first">First Semester</option>
-                          <option value="second">Second Semester</option>
-                          <option value="both">Both Semesters</option>
-                        </select>
-                      </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input
+                              type="number"
+                              name="level"
+                              placeholder="Base Level (100-800)"
+                              value={formData.level || ''}
+                              onChange={handleInputChange}
+                              className="w-full p-2 border rounded"
+                              min="100"
+                              max="800"
+                              required
+                            />
+                            <input
+                              type="number"
+                              name="credit"
+                              placeholder="Credit Hours (1-6)"
+                              value={formData.credit || ''}
+                              onChange={handleInputChange}
+                              className="w-full p-2 border rounded"
+                              min="1"
+                              max="6"
+                              required
+                            />
+                          </div>
 
-                      {/* Lecturer assignment based on role */}
-                      {(user.role === 'system_admin' || user.role === 'departmental_admin') && (
-                        <select
-                          name="lecturerId"
-                          value={formData.lecturerId || ''}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                        >
-                          <option value="">Select Lecturer (Optional)</option>
-                          {users && users.filter && users.filter(u => u.role === 'lecturer_admin').map(lecturer => (
-                            <option key={lecturer._id} value={lecturer._id}>{lecturer.name} ({lecturer.staffId})</option>
-                          ))}
-                        </select>
+                          <div className="text-sm text-green-600 bg-green-50 p-3 rounded border-l-4 border-green-400">
+                            <strong>System Admin:</strong> You are creating a global course template. Departmental admins will later add specific offerings with levels, lecturers, and schedules for their departments.
+                          </div>
+                        </>
+                      )}
+
+                      {user.role === 'departmental_admin' && (
+                        <>
+                          <div className="text-lg font-semibold text-blue-700 mb-4">Add Department Course Offering</div>
+                          <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded border-l-4 border-blue-400 mb-4">
+                            <strong>Departmental Admin:</strong> Select an existing course and add it as an offering for your department with specific level, lecturer, and schedule.
+                          </div>
+
+                          <select
+                            name="courseId"
+                            value={formData.courseId || ''}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border rounded mb-4"
+                            required
+                          >
+                            <option value="">Select Course to Offer</option>
+                            {/* This would need to be populated with global courses */}
+                          </select>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <input
+                              type="number"
+                              name="offeringLevel"
+                              placeholder="Offering Level (100-800)"
+                              value={formData.offeringLevel || ''}
+                              onChange={handleInputChange}
+                              className="w-full p-2 border rounded"
+                              min="100"
+                              max="800"
+                              required
+                            />
+                            <select
+                              name="semester"
+                              value={formData.semester || 'both'}
+                              onChange={handleInputChange}
+                              className="w-full p-2 border rounded"
+                            >
+                              <option value="first">First Semester</option>
+                              <option value="second">Second Semester</option>
+                              <option value="both">Both Semesters</option>
+                            </select>
+                            <input
+                              type="text"
+                              name="schedule"
+                              placeholder="Schedule (e.g., Mon/Wed 10:00-11:00)"
+                              value={formData.schedule || ''}
+                              onChange={handleInputChange}
+                              className="w-full p-2 border rounded"
+                            />
+                          </div>
+
+                          <select
+                            name="lecturerId"
+                            value={formData.lecturerId || ''}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border rounded"
+                            required
+                          >
+                            <option value="">Select Lecturer</option>
+                            {users && users.filter && users.filter(u => u.role === 'lecturer_admin').map(lecturer => (
+                              <option key={lecturer._id} value={lecturer._id}>{lecturer.name} ({lecturer.staffId})</option>
+                            ))}
+                          </select>
+                        </>
+                      )}
+
+                      {user.role === 'lecturer_admin' && (
+                        <>
+                          <div className="text-lg font-semibold text-purple-700 mb-4">Create Course for Your Teaching</div>
+                          <div className="text-sm text-purple-600 bg-purple-50 p-3 rounded border-l-4 border-purple-400 mb-4">
+                            <strong>Lecturer Admin:</strong> Create a course that will be automatically assigned to you. Departmental admins will later add offerings for specific levels.
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input
+                              type="text"
+                              name="code"
+                              placeholder="Course Code (e.g., CSC 201)"
+                              value={formData.code || ''}
+                              onChange={handleInputChange}
+                              className="w-full p-2 border rounded"
+                              required
+                            />
+                            <input
+                              type="text"
+                              name="title"
+                              placeholder="Course Title"
+                              value={formData.title || ''}
+                              onChange={handleInputChange}
+                              className="w-full p-2 border rounded"
+                              required
+                            />
+                          </div>
+
+                          <select
+                            name="department"
+                            value={formData.department || ''}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border rounded"
+                            required
+                          >
+                            <option value="">Select Department</option>
+                            {departments && departments.map && departments.map(dept => (
+                              <option key={dept._id} value={dept._id}>{dept.name}</option>
+                            ))}
+                          </select>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input
+                              type="number"
+                              name="level"
+                              placeholder="Base Level (100-800)"
+                              value={formData.level || ''}
+                              onChange={handleInputChange}
+                              className="w-full p-2 border rounded"
+                              min="100"
+                              max="800"
+                              required
+                            />
+                            <input
+                              type="number"
+                              name="credit"
+                              placeholder="Credit Hours (1-6)"
+                              value={formData.credit || ''}
+                              onChange={handleInputChange}
+                              className="w-full p-2 border rounded"
+                              min="1"
+                              max="6"
+                              required
+                            />
+                          </div>
+                        </>
                       )}
 
                       <textarea
@@ -1311,21 +1441,6 @@ const AdminPage = () => {
                           className="w-full p-2 border rounded"
                         />
                       </div>
-
-                      <input
-                        type="text"
-                        name="schedule"
-                        placeholder="Schedule (e.g., Mon/Wed 10:00-11:00)"
-                        value={formData.schedule || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
-                      />
-
-                      {user.role === 'lecturer_admin' && (
-                        <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded border-l-4 border-blue-400">
-                          <strong>Note:</strong> This course will be automatically assigned to you as the lecturer.
-                        </div>
-                      )}
                     </>
                   )}
 
