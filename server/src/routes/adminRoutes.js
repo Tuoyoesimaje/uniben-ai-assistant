@@ -231,10 +231,11 @@ router.get('/courses', async (req, res) => {
       // System admin sees all global courses
       // No filter - sees all courses
     } else if (user.role === 'departmental_admin') {
-      // Departmental admin sees courses offered by their department
-      query.departments_offering = {
-        $elemMatch: { department: user.department }
-      };
+      // Departmental admin sees courses offered by their department (owned + borrowed)
+      query.$or = [
+        { department: user.department }, // Own courses
+        { departments_offering: user.department } // Borrowed courses
+      ];
     } else if (user.role === 'lecturer_admin') {
       // Lecturer admin sees courses they are assigned to teach
       query.departments_offering = {
@@ -519,9 +520,9 @@ router.get('/stats', async (req, res) => {
     // Departmental admin stats for their department
     if (user.role === 'departmental_admin') {
       const deptUsers = await User.countDocuments({ department: user.department });
-      const deptCourses = await Course.countDocuments({ department: user.department });
+      const deptCourses = await Course.findOfferedByDepartment(user.department);
       stats.departmentUsers = deptUsers;
-      stats.departmentCourses = deptCourses;
+      stats.departmentCourses = deptCourses.length;
     }
 
     // Lecturer admin stats for their assigned course offerings

@@ -23,8 +23,12 @@ const courseSchema = new mongoose.Schema({
   department: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Department',
-    required: [true, 'Department is required']
+    required: [true, 'Owning department is required']
   },
+  departments_offering: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Department'
+  }],
   departments_offering: [{
     department: {
       type: mongoose.Schema.Types.ObjectId,
@@ -256,6 +260,7 @@ const courseSchema = new mongoose.Schema({
 courseSchema.index({ code: 1 });
 courseSchema.index({ title: 'text', description: 'text' });
 courseSchema.index({ department: 1 });
+courseSchema.index({ departments_offering: 1 });
 courseSchema.index({ faculty: 1 });
 courseSchema.index({ level: 1 });
 courseSchema.index({ credit: 1 });
