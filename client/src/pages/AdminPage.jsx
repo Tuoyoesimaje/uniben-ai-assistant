@@ -483,7 +483,7 @@ const AdminPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {users.map((user) => (
+                        {users && users.map && users.map((user) => (
                           <tr key={user._id} className="border-b border-gray-100">
                             <td className="py-3 px-4">{user.name}</td>
                             <td className="py-3 px-4">
@@ -559,7 +559,7 @@ const AdminPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {buildings.map((building) => (
+                        {buildings && buildings.map && buildings.map((building) => (
                           <tr key={building._id} className="border-b border-gray-100">
                             <td className="py-3 px-4">{building.name}</td>
                             <td className="py-3 px-4 font-mono text-sm">{building.code}</td>
@@ -617,7 +617,7 @@ const AdminPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {departments.map((department) => (
+                        {departments && departments.map && departments.map((department) => (
                           <tr key={department._id} className="border-b border-gray-100">
                             <td className="py-3 px-4">{department.name}</td>
                             <td className="py-3 px-4">{department.faculty}</td>
@@ -682,7 +682,7 @@ const AdminPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {courses.map((course) => (
+                        {courses && courses.map && courses.map((course) => (
                           <tr key={course._id} className="border-b border-gray-100">
                             <td className="py-3 px-4 font-mono text-sm">{course.code}</td>
                             <td className="py-3 px-4">{course.title}</td>
@@ -741,10 +741,10 @@ const AdminPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {quizzes.map((quiz) => (
+                        {quizzes && quizzes.map && quizzes.map((quiz) => (
                           <tr key={quiz._id} className="border-b border-gray-100">
                             <td className="py-3 px-4">{quiz.title}</td>
-                            <td className="py-3 px-4">{quiz.course?.name || 'N/A'}</td>
+                            <td className="py-3 px-4">{quiz.course?.title || quiz.course?.name || 'N/A'}</td>
                             <td className="py-3 px-4">{quiz.questions?.length || 0}</td>
                             <td className="py-3 px-4">{quiz.createdBy?.name || 'N/A'}</td>
                             <td className="py-3 px-4">
@@ -884,7 +884,7 @@ const AdminPage = () => {
                         className="w-full p-2 border rounded"
                       >
                         <option value="">Select Department</option>
-                        {departments.map(dept => (
+                        {departments && departments.map && departments.map(dept => (
                           <option key={dept._id} value={dept._id}>{dept.name}</option>
                         ))}
                       </select>
@@ -986,7 +986,7 @@ const AdminPage = () => {
                         required
                       >
                         <option value="">Select Department</option>
-                        {departments.map(dept => (
+                        {departments && departments.map && departments.map(dept => (
                           <option key={dept._id} value={dept._id}>{dept.name}</option>
                         ))}
                       </select>
@@ -1046,8 +1046,8 @@ const AdminPage = () => {
                         className="w-full p-2 border rounded"
                       >
                         <option value="">Select Course</option>
-                        {courses.map(course => (
-                          <option key={course._id} value={course._id}>{course.name}</option>
+                        {courses && courses.map && courses.map(course => (
+                          <option key={course._id} value={course._id}>{course.title || course.name}</option>
                         ))}
                       </select>
                     </>
