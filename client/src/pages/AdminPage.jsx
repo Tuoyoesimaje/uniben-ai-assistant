@@ -38,28 +38,51 @@ const AdminPage = () => {
 
       // Add role-specific data requests
       if (['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin', 'staff'].includes(user.role)) {
+        // All admin types can see buildings
+        requests.push(fetch('/api/admin/buildings', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+
+        // System admin gets everything
         if (user.role === 'system_admin') {
           requests.push(fetch('/api/admin/users', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
-        }
-        requests.push(fetch('/api/admin/buildings', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
-        if (user.role === 'system_admin') {
           requests.push(fetch('/api/admin/departments', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+          requests.push(fetch('/api/admin/courses', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+          requests.push(fetch('/api/admin/quizzes', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+          requests.push(fetch('/api/news/admin/all', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
         }
-        requests.push(fetch('/api/admin/courses', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
-        requests.push(fetch('/api/admin/quizzes', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
-        requests.push(fetch('/api/news/admin/all', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+
+        // Bursary admin gets fees data
+        else if (user.role === 'bursary_admin') {
+          requests.push(fetch('/api/fees/stats/summary', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+          requests.push(fetch('/api/news/admin/all', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+        }
+
+        // Departmental admin gets department-specific data
+        else if (user.role === 'departmental_admin') {
+          requests.push(fetch('/api/admin/courses', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+          requests.push(fetch('/api/news/admin/all', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+        }
+
+        // Lecturer admin gets their courses and news
+        else if (user.role === 'lecturer_admin') {
+          requests.push(fetch('/api/admin/courses', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+          requests.push(fetch('/api/admin/quizzes', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+          requests.push(fetch('/api/news/admin/all', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+        }
+
+        // Staff gets basic data
+        else if (user.role === 'staff') {
+          requests.push(fetch('/api/admin/courses', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+          requests.push(fetch('/api/admin/quizzes', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+          requests.push(fetch('/api/news/admin/all', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+        }
       }
 
       const responses = await Promise.all(requests);
 
-      console.log('API responses received:', {
-        stats: statsRes.status,
-        users: usersRes.status,
-        buildings: buildingsRes.status,
-        departments: departmentsRes.status,
-        courses: coursesRes.status,
-        quizzes: quizzesRes.status
-      });
+      console.log('API responses received:', responses.map((res, index) => ({
+        request: index,
+        status: res.status
+      })));
 
       const dataPromises = responses.map(res => res.json());
       const data = await Promise.all(dataPromises);
@@ -72,27 +95,81 @@ const AdminPage = () => {
       if (statsData.success) setStats(statsData.stats);
 
       if (['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin', 'staff'].includes(user.role)) {
+        // Process responses based on user role
         if (user.role === 'system_admin') {
+          // System admin: stats, users, buildings, departments, courses, quizzes, news
           const usersData = data[dataIndex++];
           if (usersData.success) setUsers(usersData.users);
-        }
 
-        const buildingsData = data[dataIndex++];
-        if (buildingsData.success) setBuildings(buildingsData.buildings);
+          const buildingsData = data[dataIndex++];
+          if (buildingsData.success) setBuildings(buildingsData.buildings);
 
-        if (user.role === 'system_admin') {
           const departmentsData = data[dataIndex++];
           if (departmentsData.success) setDepartments(departmentsData.departments);
+
+          const coursesData = data[dataIndex++];
+          if (coursesData.success) setCourses(coursesData.courses);
+
+          const quizzesData = data[dataIndex++];
+          if (quizzesData.success) setQuizzes(quizzesData.quizzes);
+
+          const newsData = data[dataIndex++];
+          if (newsData.success) setNews(newsData.news);
         }
 
-        const coursesData = data[dataIndex++];
-        if (coursesData.success) setCourses(coursesData.courses);
+        else if (user.role === 'bursary_admin') {
+          // Bursary admin: stats, buildings, fees stats, news
+          const buildingsData = data[dataIndex++];
+          if (buildingsData.success) setBuildings(buildingsData.buildings);
 
-        const quizzesData = data[dataIndex++];
-        if (quizzesData.success) setQuizzes(quizzesData.quizzes);
+          const feesStatsData = data[dataIndex++];
+          if (feesStatsData.success) setFees(feesStatsData);
 
-        const newsData = data[dataIndex++];
-        if (newsData.success) setNews(newsData.news);
+          const newsData = data[dataIndex++];
+          if (newsData.success) setNews(newsData.news);
+        }
+
+        else if (user.role === 'departmental_admin') {
+          // Departmental admin: stats, buildings, courses, news
+          const buildingsData = data[dataIndex++];
+          if (buildingsData.success) setBuildings(buildingsData.buildings);
+
+          const coursesData = data[dataIndex++];
+          if (coursesData.success) setCourses(coursesData.courses);
+
+          const newsData = data[dataIndex++];
+          if (newsData.success) setNews(newsData.news);
+        }
+
+        else if (user.role === 'lecturer_admin') {
+          // Lecturer admin: stats, buildings, courses, quizzes, news
+          const buildingsData = data[dataIndex++];
+          if (buildingsData.success) setBuildings(buildingsData.buildings);
+
+          const coursesData = data[dataIndex++];
+          if (coursesData.success) setCourses(coursesData.courses);
+
+          const quizzesData = data[dataIndex++];
+          if (quizzesData.success) setQuizzes(quizzesData.quizzes);
+
+          const newsData = data[dataIndex++];
+          if (newsData.success) setNews(newsData.news);
+        }
+
+        else if (user.role === 'staff') {
+          // Staff: stats, buildings, courses, quizzes, news
+          const buildingsData = data[dataIndex++];
+          if (buildingsData.success) setBuildings(buildingsData.buildings);
+
+          const coursesData = data[dataIndex++];
+          if (coursesData.success) setCourses(coursesData.courses);
+
+          const quizzesData = data[dataIndex++];
+          if (quizzesData.success) setQuizzes(quizzesData.quizzes);
+
+          const newsData = data[dataIndex++];
+          if (newsData.success) setNews(newsData.news);
+        }
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
