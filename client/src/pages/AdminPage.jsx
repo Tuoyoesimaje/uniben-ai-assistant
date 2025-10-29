@@ -77,17 +77,15 @@ const AdminPage = () => {
           requests.push(fetch('/api/news/admin/all', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
         }
 
-        // Lecturer admin gets their courses and news
+        // Lecturer admin gets their courses and news (no quizzes)
         else if (user.role === 'lecturer_admin') {
           requests.push(fetch('/api/admin/courses', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
-          requests.push(fetch('/api/admin/quizzes', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
           requests.push(fetch('/api/news/admin/all', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
         }
 
-        // Staff gets basic data
+        // Staff gets basic data (no quizzes)
         else if (user.role === 'staff') {
           requests.push(fetch('/api/admin/courses', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
-          requests.push(fetch('/api/admin/quizzes', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
           requests.push(fetch('/api/news/admin/all', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
         }
       }
@@ -160,30 +158,24 @@ const AdminPage = () => {
         }
 
         else if (user.role === 'lecturer_admin') {
-          // Lecturer admin: stats, buildings, courses, quizzes, news
+          // Lecturer admin: stats, buildings, courses, news (no quizzes)
           const buildingsData = data[dataIndex++];
           if (buildingsData && buildingsData.success) setBuildings(buildingsData.buildings || []);
 
           const coursesData = data[dataIndex++];
           if (coursesData && coursesData.success) setCourses(coursesData.courses || []);
-
-          const quizzesData = data[dataIndex++];
-          if (quizzesData && quizzesData.success) setQuizzes(quizzesData.quizzes || []);
 
           const newsData = data[dataIndex++];
           if (newsData && newsData.success) setNews(newsData.news || []);
         }
 
         else if (user.role === 'staff') {
-          // Staff: stats, buildings, courses, quizzes, news
+          // Staff: stats, buildings, courses, news (no quizzes)
           const buildingsData = data[dataIndex++];
           if (buildingsData && buildingsData.success) setBuildings(buildingsData.buildings || []);
 
           const coursesData = data[dataIndex++];
           if (coursesData && coursesData.success) setCourses(coursesData.courses || []);
-
-          const quizzesData = data[dataIndex++];
-          if (quizzesData && quizzesData.success) setQuizzes(quizzesData.quizzes || []);
 
           const newsData = data[dataIndex++];
           if (newsData && newsData.success) setNews(newsData.news || []);
@@ -338,15 +330,26 @@ const AdminPage = () => {
 
               {/* Bursary Admin */}
               {user.role === 'bursary_admin' && (
-                <button
-                  onClick={() => setActiveTab('fees')}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
-                    activeTab === 'fees' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <DollarSign className="w-5 h-5" />
-                  Fees & Payments
-                </button>
+                <>
+                  <button
+                    onClick={() => setActiveTab('fees')}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
+                      activeTab === 'fees' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <DollarSign className="w-5 h-5" />
+                    Fees & Payments
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('news-management')}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
+                      activeTab === 'news-management' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Newspaper className="w-5 h-5" />
+                    Bursary News
+                  </button>
+                </>
               )}
 
               {/* Departmental Admin */}
@@ -362,9 +365,9 @@ const AdminPage = () => {
                     Department Courses
                   </button>
                   <button
-                    onClick={() => setActiveTab('news')}
+                    onClick={() => setActiveTab('news-management')}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
-                      activeTab === 'news' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
+                      activeTab === 'news-management' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
                     <Newspaper className="w-5 h-5" />
@@ -386,9 +389,9 @@ const AdminPage = () => {
                     My Courses
                   </button>
                   <button
-                    onClick={() => setActiveTab('news')}
+                    onClick={() => setActiveTab('news-management')}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
-                      activeTab === 'news' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
+                      activeTab === 'news-management' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
                     <Newspaper className="w-5 h-5" />
@@ -397,39 +400,29 @@ const AdminPage = () => {
                 </>
               )}
 
-              {/* News Management for admins who can post news */}
-              {['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin'].includes(user.role) && (
-                <button
-                  onClick={() => setActiveTab('news-management')}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
-                    activeTab === 'news-management' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <Newspaper className="w-5 h-5" />
-                  Manage News
-                </button>
+              {/* System Admin Only */}
+              {user.role === 'system_admin' && (
+                <>
+                  <button
+                    onClick={() => setActiveTab('buildings')}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
+                      activeTab === 'buildings' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Building className="w-5 h-5" />
+                    Buildings
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('quizzes')}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
+                      activeTab === 'quizzes' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <FileText className="w-5 h-5" />
+                    Quizzes
+                  </button>
+                </>
               )}
-
-              {/* Common for all admin types */}
-              <button
-                onClick={() => setActiveTab('buildings')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
-                  activeTab === 'buildings' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <Building className="w-5 h-5" />
-                Buildings
-              </button>
-
-              <button
-                onClick={() => setActiveTab('quizzes')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
-                  activeTab === 'quizzes' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <FileText className="w-5 h-5" />
-                Quizzes
-              </button>
             </nav>
           </div>
 
@@ -437,8 +430,16 @@ const AdminPage = () => {
           <div className="w-full">
             {activeTab === 'dashboard' && (
               <div className="space-y-6">
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                {/* Role-specific Stats Cards */}
+                <div className={`grid gap-6 ${
+                  user.role === 'system_admin' ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5' :
+                  user.role === 'bursary_admin' ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3' :
+                  user.role === 'departmental_admin' ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-4' :
+                  user.role === 'lecturer_admin' ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3' :
+                  'grid-cols-1 sm:grid-cols-2 md:grid-cols-3'
+                }`}>
+
+                  {/* Common stats for all roles */}
                   <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                     <div className="flex items-center gap-4">
                       <Users className="w-8 h-8 text-emerald-600" />
@@ -448,55 +449,218 @@ const AdminPage = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <div className="flex items-center gap-4">
-                      <Building className="w-8 h-8 text-blue-600" />
-                      <div>
-                        <p className="text-2xl font-bold text-gray-900">{stats.buildings || 0}</p>
-                        <p className="text-sm text-gray-600">Buildings</p>
+
+                  {/* System Admin - All stats */}
+                  {user.role === 'system_admin' && (
+                    <>
+                      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex items-center gap-4">
+                          <Building className="w-8 h-8 text-blue-600" />
+                          <div>
+                            <p className="text-2xl font-bold text-gray-900">{stats.buildings || 0}</p>
+                            <p className="text-sm text-gray-600">Buildings</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <div className="flex items-center gap-4">
-                      <GraduationCap className="w-8 h-8 text-purple-600" />
-                      <div>
-                        <p className="text-2xl font-bold text-gray-900">{stats.departments || 0}</p>
-                        <p className="text-sm text-gray-600">Departments</p>
+                      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex items-center gap-4">
+                          <GraduationCap className="w-8 h-8 text-purple-600" />
+                          <div>
+                            <p className="text-2xl font-bold text-gray-900">{stats.departments || 0}</p>
+                            <p className="text-sm text-gray-600">Departments</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <div className="flex items-center gap-4">
-                      <BookOpen className="w-8 h-8 text-orange-600" />
-                      <div>
-                        <p className="text-2xl font-bold text-gray-900">{stats.courses || 0}</p>
-                        <p className="text-sm text-gray-600">Courses</p>
+                      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex items-center gap-4">
+                          <BookOpen className="w-8 h-8 text-orange-600" />
+                          <div>
+                            <p className="text-2xl font-bold text-gray-900">{stats.courses || 0}</p>
+                            <p className="text-sm text-gray-600">Courses</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <div className="flex items-center gap-4">
-                      <FileText className="w-8 h-8 text-red-600" />
-                      <div>
-                        <p className="text-2xl font-bold text-gray-900">{stats.quizzes || 0}</p>
-                        <p className="text-sm text-gray-600">Quizzes</p>
+                      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex items-center gap-4">
+                          <FileText className="w-8 h-8 text-red-600" />
+                          <div>
+                            <p className="text-2xl font-bold text-gray-900">{stats.quizzes || 0}</p>
+                            <p className="text-sm text-gray-600">Quizzes</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    </>
+                  )}
+
+                  {/* Bursary Admin - Finance focused */}
+                  {user.role === 'bursary_admin' && (
+                    <>
+                      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex items-center gap-4">
+                          <DollarSign className="w-8 h-8 text-green-600" />
+                          <div>
+                            <p className="text-2xl font-bold text-gray-900">{stats.feesCollected || 0}</p>
+                            <p className="text-sm text-gray-600">Fees Collected</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex items-center gap-4">
+                          <DollarSign className="w-8 h-8 text-red-600" />
+                          <div>
+                            <p className="text-2xl font-bold text-gray-900">{stats.totalOutstanding || 0}</p>
+                            <p className="text-sm text-gray-600">Outstanding</p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Departmental Admin - Department focused */}
+                  {user.role === 'departmental_admin' && (
+                    <>
+                      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex items-center gap-4">
+                          <Users className="w-8 h-8 text-blue-600" />
+                          <div>
+                            <p className="text-2xl font-bold text-gray-900">{stats.departmentUsers || 0}</p>
+                            <p className="text-sm text-gray-600">Dept Students</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex items-center gap-4">
+                          <BookOpen className="w-8 h-8 text-orange-600" />
+                          <div>
+                            <p className="text-2xl font-bold text-gray-900">{stats.departmentCourses || 0}</p>
+                            <p className="text-sm text-gray-600">Dept Courses</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex items-center gap-4">
+                          <Users className="w-8 h-8 text-purple-600" />
+                          <div>
+                            <p className="text-2xl font-bold text-gray-900">{stats.departmentStaff || 0}</p>
+                            <p className="text-sm text-gray-600">Dept Staff</p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Lecturer Admin - Teaching focused */}
+                  {user.role === 'lecturer_admin' && (
+                    <>
+                      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex items-center gap-4">
+                          <BookOpen className="w-8 h-8 text-orange-600" />
+                          <div>
+                            <p className="text-2xl font-bold text-gray-900">{stats.myCourses || 0}</p>
+                            <p className="text-sm text-gray-600">My Courses</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex items-center gap-4">
+                          <Users className="w-8 h-8 text-blue-600" />
+                          <div>
+                            <p className="text-2xl font-bold text-gray-900">{stats.myStudents || 0}</p>
+                            <p className="text-sm text-gray-600">My Students</p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Staff - Basic stats */}
+                  {user.role === 'staff' && (
+                    <>
+                      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex items-center gap-4">
+                          <BookOpen className="w-8 h-8 text-orange-600" />
+                          <div>
+                            <p className="text-2xl font-bold text-gray-900">{stats.courses || 0}</p>
+                            <p className="text-sm text-gray-600">Courses</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex items-center gap-4">
+                          <Newspaper className="w-8 h-8 text-green-600" />
+                          <div>
+                            <p className="text-2xl font-bold text-gray-900">{stats.news || 0}</p>
+                            <p className="text-sm text-gray-600">News Items</p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
-                {/* Recent Activity */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                      <p className="text-sm text-gray-700">System initialized successfully</p>
-                      <span className="text-xs text-gray-500 ml-auto">Just now</span>
+                {/* Role-specific content */}
+                {user.role === 'bursary_admin' && (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Overview</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="text-center p-4 bg-green-50 rounded-lg">
+                        <p className="text-2xl font-bold text-green-600">{stats.fullyPaidStudents || 0}</p>
+                        <p className="text-sm text-gray-600">Fully Paid Students</p>
+                      </div>
+                      <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                        <p className="text-2xl font-bold text-yellow-600">{stats.partiallyPaidStudents || 0}</p>
+                        <p className="text-sm text-gray-600">Partially Paid</p>
+                      </div>
+                      <div className="text-center p-4 bg-red-50 rounded-lg">
+                        <p className="text-2xl font-bold text-red-600">{stats.unpaidStudents || 0}</p>
+                        <p className="text-sm text-gray-600">Unpaid Students</p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
+
+                {user.role === 'departmental_admin' && (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Department Overview</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 bg-blue-50 rounded-lg">
+                        <h4 className="font-medium text-blue-900 mb-2">Active Course Offerings</h4>
+                        <p className="text-2xl font-bold text-blue-600">{stats.activeOfferings || 0}</p>
+                        <p className="text-sm text-blue-700">Courses currently offered this semester</p>
+                      </div>
+                      <div className="p-4 bg-green-50 rounded-lg">
+                        <h4 className="font-medium text-green-900 mb-2">Assigned Lecturers</h4>
+                        <p className="text-2xl font-bold text-green-600">{stats.assignedLecturers || 0}</p>
+                        <p className="text-sm text-green-700">Lecturers with course assignments</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {user.role === 'lecturer_admin' && (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Teaching Overview</h3>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 bg-orange-50 rounded-lg">
+                          <h4 className="font-medium text-orange-900 mb-2">Current Semester</h4>
+                          <p className="text-lg font-bold text-orange-600">{stats.currentSemester || 'Not Set'}</p>
+                          <p className="text-sm text-orange-700">Active teaching period</p>
+                        </div>
+                        <div className="p-4 bg-blue-50 rounded-lg">
+                          <h4 className="font-medium text-blue-900 mb-2">Class Sizes</h4>
+                          <p className="text-lg font-bold text-blue-600">{stats.averageClassSize || 0}</p>
+                          <p className="text-sm text-blue-700">Average students per course</p>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-purple-50 rounded-lg">
+                        <h4 className="font-medium text-purple-900 mb-2">Recent Course Activity</h4>
+                        <p className="text-sm text-purple-700">Last updated: {stats.lastActivity || 'No recent activity'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
               </div>
             )}
 
@@ -586,7 +750,7 @@ const AdminPage = () => {
             )}
 
             {/* Similar tables for buildings, departments, courses, quizzes */}
-            {activeTab === 'buildings' && (
+            {activeTab === 'buildings' && user.role === 'system_admin' && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <h2 className="text-xl font-semibold text-gray-900">Building Management</h2>
@@ -810,64 +974,29 @@ const AdminPage = () => {
               </div>
             )}
 
-            {activeTab === 'quizzes' && (
+            {activeTab === 'quizzes' && user.role === 'system_admin' && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <h2 className="text-xl font-semibold text-gray-900">Quiz Management</h2>
-                  <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                    <input
-                      type="text"
-                      placeholder="Search quizzes..."
-                      value={searchTerms.quizzes}
-                      onChange={(e) => handleSearchChange('quizzes', e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    />
-                    <button
-                      onClick={() => openModal('quiz')}
-                      className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 flex items-center gap-2 w-full sm:w-auto"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Quiz
-                    </button>
-                  </div>
+                <div className="p-6 border-b border-gray-200">
+                  <h2 className="text-xl font-semibold text-gray-900">Quiz Usage Statistics</h2>
+                  <p className="text-sm text-gray-600 mt-1">Users who have utilized the quiz feature and their activity count</p>
                 </div>
                 <div className="p-6">
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-gray-200">
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Title</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Course</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Questions</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Created By</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">User Name</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Role</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">ID</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Quiz Usage Count</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Last Activity</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filterData(quizzes, searchTerms.quizzes, ['title', 'course.title', 'course.name', 'createdBy.name']).map((quiz) => (
-                          <tr key={quiz._id} className="border-b border-gray-100">
-                            <td className="py-3 px-4">{quiz.title}</td>
-                            <td className="py-3 px-4">{quiz.course?.title || quiz.course?.name || 'N/A'}</td>
-                            <td className="py-3 px-4">{quiz.questions?.length || 0}</td>
-                            <td className="py-3 px-4">{quiz.createdBy?.name || 'N/A'}</td>
-                            <td className="py-3 px-4">
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => openModal('quiz', quiz)}
-                                  className="text-blue-600 hover:text-blue-800"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete('quizzes', quiz._id)}
-                                  className="text-red-600 hover:text-red-800"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                        {/* This would be populated with actual quiz usage data */}
+                        <tr className="border-b border-gray-100">
+                          <td className="py-3 px-4 text-gray-500 italic" colSpan="5">Quiz usage statistics will be displayed here</td>
+                        </tr>
                       </tbody>
                     </table>
                   </div>
@@ -1200,217 +1329,81 @@ const AdminPage = () => {
                     </>
                   )}
 
-                  {modalType === 'course' && (user.role === 'system_admin' || user.role === 'departmental_admin' || user.role === 'lecturer_admin') && (
+                  {modalType === 'course' && user.role === 'system_admin' && (
                     <>
-                      {user.role === 'system_admin' && (
-                        <>
-                          <div className="text-lg font-semibold text-green-700 mb-4">Create Global Course Template</div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input
-                              type="text"
-                              name="code"
-                              placeholder="Course Code (e.g., CSC 201)"
-                              value={formData.code || ''}
-                              onChange={handleInputChange}
-                              className="w-full p-2 border rounded"
-                              required
-                            />
-                            <input
-                              type="text"
-                              name="title"
-                              placeholder="Course Title"
-                              value={formData.title || ''}
-                              onChange={handleInputChange}
-                              className="w-full p-2 border rounded"
-                              required
-                            />
-                          </div>
+                      <div className="text-lg font-semibold text-green-700 mb-4">Create Global Course Template</div>
+                      <div className="text-sm text-green-600 bg-green-50 p-3 rounded border-l-4 border-green-400 mb-4">
+                        <strong>System Admin:</strong> Create a course template that departments can adopt and offer to their students.
+                      </div>
 
-                          <select
-                            name="department"
-                            value={formData.department || ''}
-                            onChange={handleInputChange}
-                            className="w-full p-2 border rounded"
-                            required
-                          >
-                            <option value="">Select Department</option>
-                            {departments && departments.map && departments.map(dept => (
-                              <option key={dept._id} value={dept._id}>{dept.name}</option>
-                            ))}
-                          </select>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          name="code"
+                          placeholder="Course Code (e.g., CSC 201)"
+                          value={formData.code || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          required
+                        />
+                        <input
+                          type="text"
+                          name="title"
+                          placeholder="Course Title"
+                          value={formData.title || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          required
+                        />
+                      </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input
-                              type="number"
-                              name="level"
-                              placeholder="Base Level (100-800)"
-                              value={formData.level || ''}
-                              onChange={handleInputChange}
-                              className="w-full p-2 border rounded"
-                              min="100"
-                              max="800"
-                              required
-                            />
-                            <input
-                              type="number"
-                              name="credit"
-                              placeholder="Credit Hours (1-6)"
-                              value={formData.credit || ''}
-                              onChange={handleInputChange}
-                              className="w-full p-2 border rounded"
-                              min="1"
-                              max="6"
-                              required
-                            />
-                          </div>
+                      <select
+                        name="department"
+                        value={formData.department || ''}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border rounded"
+                        required
+                      >
+                        <option value="">Select Primary Department (Owner)</option>
+                        {departments && departments.map && departments.map(dept => (
+                          <option key={dept._id} value={dept._id}>{dept.name}</option>
+                        ))}
+                      </select>
 
-                          <div className="text-sm text-green-600 bg-green-50 p-3 rounded border-l-4 border-green-400">
-                            <strong>System Admin:</strong> You are creating a global course template. Departmental admins will later add specific offerings with levels, lecturers, and schedules for their departments.
-                          </div>
-                        </>
-                      )}
-
-                      {user.role === 'departmental_admin' && (
-                        <>
-                          <div className="text-lg font-semibold text-blue-700 mb-4">Add Department Course Offering</div>
-                          <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded border-l-4 border-blue-400 mb-4">
-                            <strong>Departmental Admin:</strong> Select an existing course and add it as an offering for your department with specific level, lecturer, and schedule.
-                          </div>
-
-                          <select
-                            name="courseId"
-                            value={formData.courseId || ''}
-                            onChange={handleInputChange}
-                            className="w-full p-2 border rounded mb-4"
-                            required
-                          >
-                            <option value="">Select Course to Offer</option>
-                            {/* This would need to be populated with global courses */}
-                          </select>
-
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <input
-                              type="number"
-                              name="offeringLevel"
-                              placeholder="Offering Level (100-800)"
-                              value={formData.offeringLevel || ''}
-                              onChange={handleInputChange}
-                              className="w-full p-2 border rounded"
-                              min="100"
-                              max="800"
-                              required
-                            />
-                            <select
-                              name="semester"
-                              value={formData.semester || 'both'}
-                              onChange={handleInputChange}
-                              className="w-full p-2 border rounded"
-                            >
-                              <option value="first">First Semester</option>
-                              <option value="second">Second Semester</option>
-                              <option value="both">Both Semesters</option>
-                            </select>
-                            <input
-                              type="text"
-                              name="schedule"
-                              placeholder="Schedule (e.g., Mon/Wed 10:00-11:00)"
-                              value={formData.schedule || ''}
-                              onChange={handleInputChange}
-                              className="w-full p-2 border rounded"
-                            />
-                          </div>
-
-                          <select
-                            name="lecturerId"
-                            value={formData.lecturerId || ''}
-                            onChange={handleInputChange}
-                            className="w-full p-2 border rounded"
-                            required
-                          >
-                            <option value="">Select Lecturer</option>
-                            {users && users.filter && users.filter(u => u.role === 'lecturer_admin').map(lecturer => (
-                              <option key={lecturer._id} value={lecturer._id}>{lecturer.name} ({lecturer.staffId})</option>
-                            ))}
-                          </select>
-                        </>
-                      )}
-
-                      {user.role === 'lecturer_admin' && (
-                        <>
-                          <div className="text-lg font-semibold text-purple-700 mb-4">Create Course for Your Teaching</div>
-                          <div className="text-sm text-purple-600 bg-purple-50 p-3 rounded border-l-4 border-purple-400 mb-4">
-                            <strong>Lecturer Admin:</strong> Create a course that will be automatically assigned to you. Departmental admins will later add offerings for specific levels.
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input
-                              type="text"
-                              name="code"
-                              placeholder="Course Code (e.g., CSC 201)"
-                              value={formData.code || ''}
-                              onChange={handleInputChange}
-                              className="w-full p-2 border rounded"
-                              required
-                            />
-                            <input
-                              type="text"
-                              name="title"
-                              placeholder="Course Title"
-                              value={formData.title || ''}
-                              onChange={handleInputChange}
-                              className="w-full p-2 border rounded"
-                              required
-                            />
-                          </div>
-
-                          <select
-                            name="department"
-                            value={formData.department || ''}
-                            onChange={handleInputChange}
-                            className="w-full p-2 border rounded"
-                            required
-                          >
-                            <option value="">Select Department</option>
-                            {departments && departments.map && departments.map(dept => (
-                              <option key={dept._id} value={dept._id}>{dept.name}</option>
-                            ))}
-                          </select>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input
-                              type="number"
-                              name="level"
-                              placeholder="Base Level (100-800)"
-                              value={formData.level || ''}
-                              onChange={handleInputChange}
-                              className="w-full p-2 border rounded"
-                              min="100"
-                              max="800"
-                              required
-                            />
-                            <input
-                              type="number"
-                              name="credit"
-                              placeholder="Credit Hours (1-6)"
-                              value={formData.credit || ''}
-                              onChange={handleInputChange}
-                              className="w-full p-2 border rounded"
-                              min="1"
-                              max="6"
-                              required
-                            />
-                          </div>
-                        </>
-                      )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                          type="number"
+                          name="level"
+                          placeholder="Base Level (100-800)"
+                          value={formData.level || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          min="100"
+                          max="800"
+                          required
+                        />
+                        <input
+                          type="number"
+                          name="credit"
+                          placeholder="Credit Hours (1-6)"
+                          value={formData.credit || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          min="1"
+                          max="6"
+                          required
+                        />
+                      </div>
 
                       <textarea
                         name="description"
-                        placeholder="Course Description (Optional)"
+                        placeholder="Course Description"
                         value={formData.description || ''}
                         onChange={handleInputChange}
                         className="w-full p-2 border rounded"
                         rows="3"
                         maxlength="1000"
+                        required
                       />
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1440,6 +1433,10 @@ const AdminPage = () => {
                           })}
                           className="w-full p-2 border rounded"
                         />
+                      </div>
+
+                      <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded border-l-4 border-blue-400">
+                        <strong>Note:</strong> Other departments can "borrow" this course by adding it to their offerings. The primary department you select above will own this course by default.
                       </div>
                     </>
                   )}
