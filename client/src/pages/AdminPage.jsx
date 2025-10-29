@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/shared/Navbar';
 import { Users, Building, GraduationCap, BookOpen, FileText, BarChart3, Plus, Edit, Trash2, Newspaper, DollarSign } from 'lucide-react';
+import NewsManagementTab from '../components/news/NewsManagementTab';
 
 const AdminPage = () => {
   const { user } = useAuth();
@@ -274,6 +275,19 @@ const AdminPage = () => {
                     Course News
                   </button>
                 </>
+              )}
+
+              {/* News Management for admins who can post news */}
+              {['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin'].includes(user.role) && (
+                <button
+                  onClick={() => setActiveTab('news-management')}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
+                    activeTab === 'news-management' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <Newspaper className="w-5 h-5" />
+                  Manage News
+                </button>
               )}
 
               {/* Common for all admin types */}
@@ -555,6 +569,10 @@ const AdminPage = () => {
                   </div>
                 </div>
               </div>
+            )}
+
+            {activeTab === 'news-management' && ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin'].includes(user.role) && (
+              <NewsManagementTab user={user} />
             )}
 
             {activeTab === 'courses' && (user.role === 'system_admin' || user.role === 'departmental_admin' || user.role === 'lecturer_admin') && (

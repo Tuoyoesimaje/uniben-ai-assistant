@@ -5,6 +5,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import ChatPage from './components/chat/ChatPage';
 import MapPage from './pages/MapPage';
 import AdminPage from './pages/AdminPage';
+import NewsPage from './pages/NewsPage';
 import QuizUpload from './components/quiz/QuizUpload';
 import QuizStart from './components/quiz/QuizStart';
 import QuizInterface from './components/quiz/QuizInterface';
@@ -94,6 +95,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AdminPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/news"
+              element={
+                <ProtectedRoute allowedRoles={['student', 'staff', 'system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin']}>
+                  <NewsPage />
                 </ProtectedRoute>
               }
             />

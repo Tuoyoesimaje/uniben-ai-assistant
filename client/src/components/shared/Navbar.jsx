@@ -81,6 +81,15 @@ export default function Navbar() {
                 <span className="material-symbols-outlined text-lg">quiz</span>
                 AI Quiz
               </Link>
+              {user && user.role !== 'guest' && (
+                <Link
+                  to="/news"
+                  className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-all duration-200 font-medium"
+                >
+                  <span className="material-symbols-outlined text-lg">newspaper</span>
+                  News
+                </Link>
+              )}
               {user?.role === 'staff' && (
                 <Link
                   to="/admin"
@@ -176,6 +185,16 @@ export default function Navbar() {
                   <span className="material-symbols-outlined">quiz</span>
                   AI Quiz
                 </Link>
+                {user && user.role !== 'guest' && (
+                  <Link
+                    to="/news"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center gap-2 px-3 py-3 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors font-medium"
+                  >
+                    <span className="material-symbols-outlined">newspaper</span>
+                    News
+                  </Link>
+                )}
                 {user?.role === 'staff' && (
                   <Link
                     to="/admin"

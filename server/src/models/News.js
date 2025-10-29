@@ -42,10 +42,47 @@ const newsSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  priority: {
+    type: String,
+    enum: {
+      values: ['high', 'medium', 'low'],
+      message: 'Priority must be high, medium, or low'
+    },
+    default: 'medium'
+  },
+  expiresAt: {
+    type: Date
+  },
   tags: [{
     type: String,
     trim: true,
     lowercase: true
+  }],
+  attachments: [{
+    filename: {
+      type: String,
+      required: true
+    },
+    originalName: {
+      type: String,
+      required: true
+    },
+    mimeType: {
+      type: String,
+      required: true
+    },
+    size: {
+      type: Number,
+      required: true
+    },
+    url: {
+      type: String,
+      required: true
+    },
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    }
   }],
   updatedAt: {
     type: Date,

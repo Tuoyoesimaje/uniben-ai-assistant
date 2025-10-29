@@ -38,6 +38,9 @@ router.get('/', filterDataByRole('news'), async (req, res) => {
           code: item.course.code,
           title: item.course.title
         } : null,
+        priority: item.priority,
+        expiresAt: item.expiresAt,
+        attachments: item.attachments,
         createdAt: item.createdAt,
         active: item.active
       }))
@@ -127,7 +130,10 @@ router.post('/', async (req, res) => {
       authorId: user._id,
       audience,
       department: audience === 'department_specific' ? department : undefined,
-      course: audience === 'course_specific' ? course : undefined
+      course: audience === 'course_specific' ? course : undefined,
+      priority: req.body.priority || 'medium',
+      expiresAt: req.body.expiresAt,
+      attachments: req.body.attachments || []
     });
 
     await news.save();
@@ -146,6 +152,9 @@ router.post('/', async (req, res) => {
         audience: news.audience,
         department: news.department ? { name: news.department.name } : null,
         course: news.course ? { code: news.course.code, title: news.course.title } : null,
+        priority: news.priority,
+        expiresAt: news.expiresAt,
+        attachments: news.attachments,
         createdAt: news.createdAt,
         active: news.active
       }
@@ -187,10 +196,12 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    const { title, content, active } = req.body;
+    const { title, content, active, priority, expiresAt } = req.body;
     news.title = title || news.title;
     news.content = content || news.content;
     news.active = active !== undefined ? active : news.active;
+    news.priority = priority || news.priority;
+    news.expiresAt = expiresAt || news.expiresAt;
 
     await news.save();
     await news.populate(['authorId', 'department', 'course']);
@@ -208,6 +219,9 @@ router.put('/:id', async (req, res) => {
         audience: news.audience,
         department: news.department ? { name: news.department.name } : null,
         course: news.course ? { code: news.course.code, title: news.course.title } : null,
+        priority: news.priority,
+        expiresAt: news.expiresAt,
+        attachments: news.attachments,
         createdAt: news.createdAt,
         active: news.active
       }
@@ -328,6 +342,9 @@ router.get('/admin/all', async (req, res) => {
         audience: item.audience,
         department: item.department ? { name: item.department.name } : null,
         course: item.course ? { code: item.course.code, title: item.course.title } : null,
+        priority: item.priority,
+        expiresAt: item.expiresAt,
+        attachments: item.attachments,
         createdAt: item.createdAt,
         active: item.active
       }))
