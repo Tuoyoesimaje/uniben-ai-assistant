@@ -60,6 +60,10 @@ const courseSchema = new mongoose.Schema({
     trim: true,
     uppercase: true
   }],
+  lecturerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   lecturer: {
     name: {
       type: String,
@@ -81,8 +85,17 @@ const courseSchema = new mongoose.Schema({
       type: String,
       trim: true,
       maxlength: [100, 'Office location cannot exceed 100 characters']
+    },
+    officeHours: {
+      type: String,
+      trim: true,
+      maxlength: [200, 'Office hours cannot exceed 200 characters']
     }
   },
+  students: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   syllabus: {
     objectives: [{
       type: String,
@@ -112,8 +125,40 @@ const courseSchema = new mongoose.Schema({
       type: String,
       trim: true,
       maxlength: [500, 'Assessment description cannot exceed 500 characters']
+    },
+    gradingScheme: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'Grading scheme cannot exceed 500 characters']
     }
   },
+  schedule: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Schedule cannot exceed 500 characters']
+  },
+  announcements: [{
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: [200, 'Announcement title cannot exceed 200 characters']
+    },
+    content: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: [1000, 'Announcement content cannot exceed 1000 characters']
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
+  }],
   resources: [{
     title: {
       type: String,

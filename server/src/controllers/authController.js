@@ -8,7 +8,9 @@ const generateToken = (user) => {
       id: user._id,
       role: user.role,
       name: user.name,
-      displayId: user.displayId
+      displayId: user.displayId,
+      department: user.department,
+      courses: user.courses
     },
     process.env.JWT_SECRET,
     {
@@ -65,6 +67,8 @@ exports.loginStudent = async (req, res) => {
         role: user.role,
         displayId: user.displayId,
         email: user.email,
+        department: user.department,
+        courses: user.courses,
         lastLogin: user.lastLogin
       }
     });
@@ -133,6 +137,8 @@ exports.loginStaff = async (req, res) => {
         role: user.role,
         displayId: user.displayId,
         email: user.email,
+        department: user.department,
+        courses: user.courses,
         lastLogin: user.lastLogin
       }
     });
@@ -232,7 +238,9 @@ exports.verifyToken = async (req, res) => {
         name: user.name,
         role: user.role,
         displayId: user.displayId,
-        email: user.email
+        email: user.email,
+        department: user.department,
+        courses: user.courses
       }
     });
 

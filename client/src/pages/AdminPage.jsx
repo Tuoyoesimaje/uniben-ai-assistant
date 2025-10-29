@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/shared/Navbar';
-import { Users, Building, GraduationCap, BookOpen, FileText, BarChart3, Plus, Edit, Trash2 } from 'lucide-react';
+import { Users, Building, GraduationCap, BookOpen, FileText, BarChart3, Plus, Edit, Trash2, Newspaper, DollarSign } from 'lucide-react';
 
 const AdminPage = () => {
   const { user } = useAuth();
@@ -12,6 +12,8 @@ const AdminPage = () => {
   const [departments, setDepartments] = useState([]);
   const [courses, setCourses] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
+  const [news, setNews] = useState([]);
+  const [fees, setFees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
@@ -19,7 +21,7 @@ const AdminPage = () => {
   const [formData, setFormData] = useState({});
 
   useEffect(() => {
-    if (user?.role === 'staff') {
+    if (user && ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin', 'staff'].includes(user.role)) {
       loadDashboardData();
     }
   }, [user]);
@@ -29,14 +31,25 @@ const AdminPage = () => {
       setLoading(true);
       console.log('Loading admin dashboard data...');
 
-      const [statsRes, usersRes, buildingsRes, departmentsRes, coursesRes, quizzesRes] = await Promise.all([
-        fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/admin/users', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/admin/buildings', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/admin/departments', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/admin/courses', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
-        fetch('/api/admin/quizzes', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
-      ]);
+      const requests = [
+        fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+      ];
+
+      // Add role-specific data requests
+      if (['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin', 'staff'].includes(user.role)) {
+        if (user.role === 'system_admin') {
+          requests.push(fetch('/api/admin/users', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+        }
+        requests.push(fetch('/api/admin/buildings', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+        if (user.role === 'system_admin') {
+          requests.push(fetch('/api/admin/departments', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+        }
+        requests.push(fetch('/api/admin/courses', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+        requests.push(fetch('/api/admin/quizzes', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+        requests.push(fetch('/api/news/admin/all', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+      }
+
+      const responses = await Promise.all(requests);
 
       console.log('API responses received:', {
         stats: statsRes.status,
@@ -47,30 +60,39 @@ const AdminPage = () => {
         quizzes: quizzesRes.status
       });
 
-      const [statsData, usersData, buildingsData, departmentsData, coursesData, quizzesData] = await Promise.all([
-        statsRes.json(),
-        usersRes.json(),
-        buildingsRes.json(),
-        departmentsRes.json(),
-        coursesRes.json(),
-        quizzesRes.json()
-      ]);
+      const dataPromises = responses.map(res => res.json());
+      const data = await Promise.all(dataPromises);
 
-      console.log('Parsed data:', {
-        stats: statsData,
-        users: usersData,
-        buildings: buildingsData,
-        departments: departmentsData,
-        courses: coursesData,
-        quizzes: quizzesData
-      });
+      console.log('Parsed data:', data);
 
+      // Process responses based on the requests made
+      let dataIndex = 0;
+      const statsData = data[dataIndex++];
       if (statsData.success) setStats(statsData.stats);
-      if (usersData.success) setUsers(usersData.users);
-      if (buildingsData.success) setBuildings(buildingsData.buildings);
-      if (departmentsData.success) setDepartments(departmentsData.departments);
-      if (coursesData.success) setCourses(coursesData.courses);
-      if (quizzesData.success) setQuizzes(quizzesData.quizzes);
+
+      if (['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin', 'staff'].includes(user.role)) {
+        if (user.role === 'system_admin') {
+          const usersData = data[dataIndex++];
+          if (usersData.success) setUsers(usersData.users);
+        }
+
+        const buildingsData = data[dataIndex++];
+        if (buildingsData.success) setBuildings(buildingsData.buildings);
+
+        if (user.role === 'system_admin') {
+          const departmentsData = data[dataIndex++];
+          if (departmentsData.success) setDepartments(departmentsData.departments);
+        }
+
+        const coursesData = data[dataIndex++];
+        if (coursesData.success) setCourses(coursesData.courses);
+
+        const quizzesData = data[dataIndex++];
+        if (quizzesData.success) setQuizzes(quizzesData.quizzes);
+
+        const newsData = data[dataIndex++];
+        if (newsData.success) setNews(newsData.news);
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       console.error('Error details:', error.message);
@@ -150,7 +172,8 @@ const AdminPage = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  if (user?.role !== 'staff') {
+  const allowedRoles = ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin', 'staff'];
+  if (!user || !allowedRoles.includes(user.role)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center p-4">
         <div className="login-card p-8 text-center">
@@ -178,15 +201,82 @@ const AdminPage = () => {
                 <BarChart3 className="w-5 h-5" />
                 Dashboard
               </button>
-              <button
-                onClick={() => setActiveTab('users')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
-                  activeTab === 'users' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <Users className="w-5 h-5" />
-                Users
-              </button>
+
+              {/* System Admin Only */}
+              {user.role === 'system_admin' && (
+                <>
+                  <button
+                    onClick={() => setActiveTab('users')}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
+                      activeTab === 'users' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Users className="w-5 h-5" />
+                    Users
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('departments')}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
+                      activeTab === 'departments' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <GraduationCap className="w-5 h-5" />
+                    Departments
+                  </button>
+                </>
+              )}
+
+              {/* Bursary Admin */}
+              {user.role === 'bursary_admin' && (
+                <button
+                  onClick={() => setActiveTab('fees')}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
+                    activeTab === 'fees' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <DollarSign className="w-5 h-5" />
+                  Fees & Payments
+                </button>
+              )}
+
+              {/* Departmental Admin */}
+              {user.role === 'departmental_admin' && (
+                <button
+                  onClick={() => setActiveTab('news')}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
+                    activeTab === 'news' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <Newspaper className="w-5 h-5" />
+                  Department News
+                </button>
+              )}
+
+              {/* Lecturer Admin */}
+              {user.role === 'lecturer_admin' && (
+                <>
+                  <button
+                    onClick={() => setActiveTab('courses')}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
+                      activeTab === 'courses' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <BookOpen className="w-5 h-5" />
+                    My Courses
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('news')}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
+                      activeTab === 'news' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Newspaper className="w-5 h-5" />
+                    Course News
+                  </button>
+                </>
+              )}
+
+              {/* Common for all admin types */}
               <button
                 onClick={() => setActiveTab('buildings')}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
@@ -196,24 +286,7 @@ const AdminPage = () => {
                 <Building className="w-5 h-5" />
                 Buildings
               </button>
-              <button
-                onClick={() => setActiveTab('departments')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
-                  activeTab === 'departments' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <GraduationCap className="w-5 h-5" />
-                Departments
-              </button>
-              <button
-                onClick={() => setActiveTab('courses')}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
-                  activeTab === 'courses' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <BookOpen className="w-5 h-5" />
-                Courses
-              </button>
+
               <button
                 onClick={() => setActiveTab('quizzes')}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left ${
@@ -293,7 +366,7 @@ const AdminPage = () => {
               </div>
             )}
 
-            {activeTab === 'users' && (
+            {activeTab === 'users' && user.role === 'system_admin' && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <h2 className="text-xl font-semibold text-gray-900">User Management</h2>
@@ -313,6 +386,7 @@ const AdminPage = () => {
                           <th className="text-left py-3 px-4 font-medium text-gray-700">Name</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-700">Role</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-700">ID</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Department</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-700">Created</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                         </tr>
@@ -323,15 +397,22 @@ const AdminPage = () => {
                             <td className="py-3 px-4">{user.name}</td>
                             <td className="py-3 px-4">
                               <span className={`px-2 py-1 rounded-full text-xs ${
-                                user.role === 'staff' ? 'bg-purple-100 text-purple-800' :
-                                user.role === 'student' ? 'bg-blue-100 text-blue-800' :
+                                user.role === 'system_admin' ? 'bg-red-100 text-red-800' :
+                                user.role === 'bursary_admin' ? 'bg-green-100 text-green-800' :
+                                user.role === 'departmental_admin' ? 'bg-blue-100 text-blue-800' :
+                                user.role === 'lecturer_admin' ? 'bg-purple-100 text-purple-800' :
+                                user.role === 'staff' ? 'bg-yellow-100 text-yellow-800' :
+                                user.role === 'student' ? 'bg-indigo-100 text-indigo-800' :
                                 'bg-gray-100 text-gray-800'
                               }`}>
-                                {user.role}
+                                {user.role.replace('_', ' ')}
                               </span>
                             </td>
                             <td className="py-3 px-4 font-mono text-sm">
                               {user.matricNumber || user.staffId || 'N/A'}
+                            </td>
+                            <td className="py-3 px-4 text-sm">
+                              {user.department?.name || 'N/A'}
                             </td>
                             <td className="py-3 px-4 text-sm text-gray-500">
                               {new Date(user.createdAt).toLocaleDateString()}
@@ -420,7 +501,7 @@ const AdminPage = () => {
               </div>
             )}
 
-            {activeTab === 'departments' && (
+            {activeTab === 'departments' && user.role === 'system_admin' && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <h2 className="text-xl font-semibold text-gray-900">Department Management</h2>
@@ -438,8 +519,9 @@ const AdminPage = () => {
                       <thead>
                         <tr className="border-b border-gray-200">
                           <th className="text-left py-3 px-4 font-medium text-gray-700">Name</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Code</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Head</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Faculty</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">HOD</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Admin</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                         </tr>
                       </thead>
@@ -447,8 +529,9 @@ const AdminPage = () => {
                         {departments.map((department) => (
                           <tr key={department._id} className="border-b border-gray-100">
                             <td className="py-3 px-4">{department.name}</td>
-                            <td className="py-3 px-4 font-mono text-sm">{department.code}</td>
-                            <td className="py-3 px-4">{department.head || 'N/A'}</td>
+                            <td className="py-3 px-4">{department.faculty}</td>
+                            <td className="py-3 px-4">{department.hodName || 'N/A'}</td>
+                            <td className="py-3 px-4">{department.departmentalAdmin?.name || 'Not Assigned'}</td>
                             <td className="py-3 px-4">
                               <div className="flex gap-2">
                                 <button
@@ -474,17 +557,21 @@ const AdminPage = () => {
               </div>
             )}
 
-            {activeTab === 'courses' && (
+            {activeTab === 'courses' && (user.role === 'system_admin' || user.role === 'departmental_admin' || user.role === 'lecturer_admin') && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <h2 className="text-xl font-semibold text-gray-900">Course Management</h2>
-                  <button
-                    onClick={() => openModal('course')}
-                    className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 flex items-center gap-2 w-full sm:w-auto"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Course
-                  </button>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {user.role === 'lecturer_admin' ? 'My Courses' : 'Course Management'}
+                  </h2>
+                  {(user.role === 'system_admin' || user.role === 'departmental_admin') && (
+                    <button
+                      onClick={() => openModal('course')}
+                      className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 flex items-center gap-2 w-full sm:w-auto"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Course
+                    </button>
+                  )}
                 </div>
                 <div className="p-6">
                   <div className="overflow-x-auto">
@@ -492,9 +579,10 @@ const AdminPage = () => {
                       <thead>
                         <tr className="border-b border-gray-200">
                           <th className="text-left py-3 px-4 font-medium text-gray-700">Code</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Name</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Title</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-700">Department</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-700">Credits</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Lecturer</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Level</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                         </tr>
                       </thead>
@@ -502,9 +590,10 @@ const AdminPage = () => {
                         {courses.map((course) => (
                           <tr key={course._id} className="border-b border-gray-100">
                             <td className="py-3 px-4 font-mono text-sm">{course.code}</td>
-                            <td className="py-3 px-4">{course.name}</td>
+                            <td className="py-3 px-4">{course.title}</td>
                             <td className="py-3 px-4">{course.department?.name || 'N/A'}</td>
-                            <td className="py-3 px-4">{course.credits || 'N/A'}</td>
+                            <td className="py-3 px-4">{course.lecturerId?.name || course.lecturer?.name || 'N/A'}</td>
+                            <td className="py-3 px-4">{course.level}</td>
                             <td className="py-3 px-4">
                               <div className="flex gap-2">
                                 <button
@@ -513,12 +602,14 @@ const AdminPage = () => {
                                 >
                                   <Edit className="w-4 h-4" />
                                 </button>
-                                <button
-                                  onClick={() => handleDelete('courses', course._id)}
-                                  className="text-red-600 hover:text-red-800"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                {(user.role === 'system_admin' || user.role === 'departmental_admin') && (
+                                  <button
+                                    onClick={() => handleDelete('courses', course._id)}
+                                    className="text-red-600 hover:text-red-800"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -597,12 +688,12 @@ const AdminPage = () => {
               </h3>
               <form onSubmit={handleFormSubmit}>
                 <div className="space-y-4">
-                  {modalType === 'user' && (
+                  {modalType === 'user' && user.role === 'system_admin' && (
                     <>
                       <input
                         type="text"
                         name="name"
-                        placeholder="Name"
+                        placeholder="Full Name"
                         value={formData.name || ''}
                         onChange={handleInputChange}
                         className="w-full p-2 border rounded"
@@ -616,29 +707,58 @@ const AdminPage = () => {
                         required
                       >
                         <option value="">Select Role</option>
-                        <option value="student">Student</option>
+                        <option value="system_admin">System Admin</option>
+                        <option value="bursary_admin">Bursary Admin</option>
+                        <option value="departmental_admin">Departmental Admin</option>
+                        <option value="lecturer_admin">Lecturer Admin</option>
                         <option value="staff">Staff</option>
+                        <option value="student">Student</option>
                       </select>
-                      {formData.role === 'student' && (
-                        <input
-                          type="text"
-                          name="matricNumber"
-                          placeholder="Matric Number"
-                          value={formData.matricNumber || ''}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                        />
+                      {(formData.role === 'student' || formData.role === 'staff' || ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin'].includes(formData.role)) && (
+                        <>
+                          {formData.role === 'student' && (
+                            <input
+                              type="text"
+                              name="matricNumber"
+                              placeholder="Matric Number (e.g., CSC/18/1234)"
+                              value={formData.matricNumber || ''}
+                              onChange={handleInputChange}
+                              className="w-full p-2 border rounded"
+                              required
+                            />
+                          )}
+                          {(formData.role === 'staff' || ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin'].includes(formData.role)) && (
+                            <input
+                              type="text"
+                              name="staffId"
+                              placeholder="Staff ID (e.g., STAFF-1234)"
+                              value={formData.staffId || ''}
+                              onChange={handleInputChange}
+                              className="w-full p-2 border rounded"
+                              required
+                            />
+                          )}
+                          <select
+                            name="department"
+                            value={formData.department || ''}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border rounded"
+                          >
+                            <option value="">Select Department (Optional)</option>
+                            {departments.map(dept => (
+                              <option key={dept._id} value={dept._id}>{dept.name}</option>
+                            ))}
+                          </select>
+                        </>
                       )}
-                      {formData.role === 'staff' && (
-                        <input
-                          type="text"
-                          name="staffId"
-                          placeholder="Staff ID"
-                          value={formData.staffId || ''}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                        />
-                      )}
+                      <input
+                        type="email"
+                        name="email"
+                        placeholder="Email (Optional)"
+                        value={formData.email || ''}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border rounded"
+                      />
                     </>
                   )}
 
@@ -684,7 +804,7 @@ const AdminPage = () => {
                     </>
                   )}
 
-                  {modalType === 'department' && (
+                  {modalType === 'department' && user.role === 'system_admin' && (
                     <>
                       <input
                         type="text"
@@ -697,30 +817,58 @@ const AdminPage = () => {
                       />
                       <input
                         type="text"
-                        name="code"
-                        placeholder="Department Code"
-                        value={formData.code || ''}
+                        name="faculty"
+                        placeholder="Faculty"
+                        value={formData.faculty || ''}
                         onChange={handleInputChange}
                         className="w-full p-2 border rounded"
                         required
                       />
                       <input
                         type="text"
-                        name="head"
-                        placeholder="Department Head"
-                        value={formData.head || ''}
+                        name="hodName"
+                        placeholder="Head of Department Name"
+                        value={formData.hodName || ''}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border rounded"
+                        required
+                      />
+                      <input
+                        type="email"
+                        name="hodEmail"
+                        placeholder="HOD Email"
+                        value={formData.hodEmail || ''}
                         onChange={handleInputChange}
                         className="w-full p-2 border rounded"
                       />
+                      <input
+                        type="text"
+                        name="location"
+                        placeholder="Office Location"
+                        value={formData.location || ''}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border rounded"
+                      />
+                      <select
+                        name="departmentalAdmin"
+                        value={formData.departmentalAdmin || ''}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border rounded"
+                      >
+                        <option value="">Select Departmental Admin (Optional)</option>
+                        {users.filter(u => u.role === 'departmental_admin').map(admin => (
+                          <option key={admin._id} value={admin._id}>{admin.name}</option>
+                        ))}
+                      </select>
                     </>
                   )}
 
-                  {modalType === 'course' && (
+                  {modalType === 'course' && (user.role === 'system_admin' || user.role === 'departmental_admin' || user.role === 'lecturer_admin') && (
                     <>
                       <input
                         type="text"
                         name="code"
-                        placeholder="Course Code"
+                        placeholder="Course Code (e.g., CSC 201)"
                         value={formData.code || ''}
                         onChange={handleInputChange}
                         className="w-full p-2 border rounded"
@@ -728,9 +876,9 @@ const AdminPage = () => {
                       />
                       <input
                         type="text"
-                        name="name"
-                        placeholder="Course Name"
-                        value={formData.name || ''}
+                        name="title"
+                        placeholder="Course Title"
+                        value={formData.title || ''}
                         onChange={handleInputChange}
                         className="w-full p-2 border rounded"
                         required
@@ -749,12 +897,39 @@ const AdminPage = () => {
                       </select>
                       <input
                         type="number"
-                        name="credits"
-                        placeholder="Credits"
-                        value={formData.credits || ''}
+                        name="level"
+                        placeholder="Level (100-800)"
+                        value={formData.level || ''}
                         onChange={handleInputChange}
                         className="w-full p-2 border rounded"
+                        min="100"
+                        max="800"
+                        required
                       />
+                      <input
+                        type="number"
+                        name="credit"
+                        placeholder="Credit Hours"
+                        value={formData.credit || ''}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border rounded"
+                        min="1"
+                        max="6"
+                        required
+                      />
+                      {user.role === 'system_admin' && (
+                        <select
+                          name="lecturerId"
+                          value={formData.lecturerId || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                        >
+                          <option value="">Select Lecturer (Optional)</option>
+                          {users.filter(u => u.role === 'lecturer_admin').map(lecturer => (
+                            <option key={lecturer._id} value={lecturer._id}>{lecturer.name}</option>
+                          ))}
+                        </select>
+                      )}
                     </>
                   )}
 

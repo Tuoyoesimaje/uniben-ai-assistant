@@ -26,10 +26,22 @@ const userSchema = new mongoose.Schema({
   role: {
     type: String,
     enum: {
-      values: ['student', 'staff'],
-      message: 'Role must be either student or staff'
+      values: ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin', 'staff', 'student', 'guest'],
+      message: 'Role must be one of: system_admin, bursary_admin, departmental_admin, lecturer_admin, staff, student, guest'
     },
     required: [true, 'Role is required']
+  },
+  department: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Department'
+  },
+  courses: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course'
+  }],
+  permissions: {
+    type: Object,
+    default: {}
   },
   email: {
     type: String,
@@ -71,16 +83,18 @@ userSchema.virtual('displayId').get(function() {
 
 // Pre-save middleware to ensure only one of matricNumber or staffId is set
 userSchema.pre('save', function(next) {
+  const adminRoles = ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin'];
+
   if (this.role === 'student' && !this.matricNumber) {
     return next(new Error('Matriculation number is required for students'));
   }
-  if (this.role === 'staff' && !this.staffId) {
-    return next(new Error('Staff ID is required for staff members'));
+  if ((this.role === 'staff' || adminRoles.includes(this.role)) && !this.staffId) {
+    return next(new Error('Staff ID is required for staff members and admins'));
   }
   if (this.role === 'student' && this.staffId) {
     this.staffId = undefined;
   }
-  if (this.role === 'staff' && this.matricNumber) {
+  if ((this.role === 'staff' || adminRoles.includes(this.role)) && this.matricNumber) {
     this.matricNumber = undefined;
   }
   next();

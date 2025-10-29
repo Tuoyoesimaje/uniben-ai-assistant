@@ -65,6 +65,8 @@ app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/navigation', require('./routes/navigationRoutes'));
 app.use('/api/quiz', require('./routes/quizRoutes'));
+app.use('/api/news', require('./routes/newsRoutes'));
+app.use('/api/fees', require('./routes/feesRoutes'));
 
 // 404 handler for API routes
 app.use('/api/*', (req, res) => {
