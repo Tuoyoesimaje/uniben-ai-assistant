@@ -44,14 +44,19 @@ const AdminPage = () => {
         fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
       ];
 
-      // Add role-specific data requests
+      // Add role-specific data requests. Keep a stable order so responses map correctly
+      // Order expectation for system_admin: stats, users, buildings, departments, courses, quizzes, news
       if (['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin', 'staff'].includes(user.role)) {
-        // All admin types can see buildings
-        requests.push(fetch('/api/admin/buildings', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
-
-        // System admin gets everything
+        // System admin gets users first so the response ordering matches the processing below
         if (user.role === 'system_admin') {
           requests.push(fetch('/api/admin/users', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+        }
+
+        // All admin types can see buildings (push after users for consistent ordering)
+        requests.push(fetch('/api/admin/buildings', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
+
+        // System admin additional endpoints
+        if (user.role === 'system_admin') {
           requests.push(fetch('/api/admin/departments', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
           requests.push(fetch('/api/admin/courses', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
           requests.push(fetch('/api/admin/quizzes', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }));
