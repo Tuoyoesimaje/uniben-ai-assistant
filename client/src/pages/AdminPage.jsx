@@ -20,6 +20,14 @@ const AdminPage = () => {
   const [modalType, setModalType] = useState('');
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
+  const [searchTerms, setSearchTerms] = useState({
+    users: '',
+    departments: '',
+    courses: '',
+    buildings: '',
+    quizzes: '',
+    news: ''
+  });
 
   useEffect(() => {
     if (user && ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin', 'staff'].includes(user.role)) {
@@ -99,76 +107,76 @@ const AdminPage = () => {
         if (user.role === 'system_admin') {
           // System admin: stats, users, buildings, departments, courses, quizzes, news
           const usersData = data[dataIndex++];
-          if (usersData.success) setUsers(usersData.users);
+          if (usersData && usersData.success) setUsers(usersData.users || []);
 
           const buildingsData = data[dataIndex++];
-          if (buildingsData.success) setBuildings(buildingsData.buildings);
+          if (buildingsData && buildingsData.success) setBuildings(buildingsData.buildings || []);
 
           const departmentsData = data[dataIndex++];
-          if (departmentsData.success) setDepartments(departmentsData.departments);
+          if (departmentsData && departmentsData.success) setDepartments(departmentsData.departments || []);
 
           const coursesData = data[dataIndex++];
-          if (coursesData.success) setCourses(coursesData.courses);
+          if (coursesData && coursesData.success) setCourses(coursesData.courses || []);
 
           const quizzesData = data[dataIndex++];
-          if (quizzesData.success) setQuizzes(quizzesData.quizzes);
+          if (quizzesData && quizzesData.success) setQuizzes(quizzesData.quizzes || []);
 
           const newsData = data[dataIndex++];
-          if (newsData.success) setNews(newsData.news);
+          if (newsData && newsData.success) setNews(newsData.news || []);
         }
 
         else if (user.role === 'bursary_admin') {
           // Bursary admin: stats, buildings, fees stats, news
           const buildingsData = data[dataIndex++];
-          if (buildingsData.success) setBuildings(buildingsData.buildings);
+          if (buildingsData && buildingsData.success) setBuildings(buildingsData.buildings || []);
 
           const feesStatsData = data[dataIndex++];
-          if (feesStatsData.success) setFees(feesStatsData);
+          if (feesStatsData && feesStatsData.success) setFees(feesStatsData);
 
           const newsData = data[dataIndex++];
-          if (newsData.success) setNews(newsData.news);
+          if (newsData && newsData.success) setNews(newsData.news || []);
         }
 
         else if (user.role === 'departmental_admin') {
           // Departmental admin: stats, buildings, courses, news
           const buildingsData = data[dataIndex++];
-          if (buildingsData.success) setBuildings(buildingsData.buildings);
+          if (buildingsData && buildingsData.success) setBuildings(buildingsData.buildings || []);
 
           const coursesData = data[dataIndex++];
-          if (coursesData.success) setCourses(coursesData.courses);
+          if (coursesData && coursesData.success) setCourses(coursesData.courses || []);
 
           const newsData = data[dataIndex++];
-          if (newsData.success) setNews(newsData.news);
+          if (newsData && newsData.success) setNews(newsData.news || []);
         }
 
         else if (user.role === 'lecturer_admin') {
           // Lecturer admin: stats, buildings, courses, quizzes, news
           const buildingsData = data[dataIndex++];
-          if (buildingsData.success) setBuildings(buildingsData.buildings);
+          if (buildingsData && buildingsData.success) setBuildings(buildingsData.buildings || []);
 
           const coursesData = data[dataIndex++];
-          if (coursesData.success) setCourses(coursesData.courses);
+          if (coursesData && coursesData.success) setCourses(coursesData.courses || []);
 
           const quizzesData = data[dataIndex++];
-          if (quizzesData.success) setQuizzes(quizzesData.quizzes);
+          if (quizzesData && quizzesData.success) setQuizzes(quizzesData.quizzes || []);
 
           const newsData = data[dataIndex++];
-          if (newsData.success) setNews(newsData.news);
+          if (newsData && newsData.success) setNews(newsData.news || []);
         }
 
         else if (user.role === 'staff') {
           // Staff: stats, buildings, courses, quizzes, news
           const buildingsData = data[dataIndex++];
-          if (buildingsData.success) setBuildings(buildingsData.buildings);
+          if (buildingsData && buildingsData.success) setBuildings(buildingsData.buildings || []);
 
           const coursesData = data[dataIndex++];
-          if (coursesData.success) setCourses(coursesData.courses);
+          if (coursesData && coursesData.success) setCourses(coursesData.courses || []);
 
           const quizzesData = data[dataIndex++];
-          if (quizzesData.success) setQuizzes(quizzesData.quizzes);
+          if (quizzesData && quizzesData.success) setQuizzes(quizzesData.quizzes || []);
 
           const newsData = data[dataIndex++];
-          if (newsData.success) setNews(newsData.news);
+          if (newsData && newsData.success) setNews(newsData.news || []);
         }
       }
     } catch (error) {
@@ -248,6 +256,20 @@ const AdminPage = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSearchChange = (table, value) => {
+    setSearchTerms(prev => ({ ...prev, [table]: value }));
+  };
+
+  const filterData = (data, searchTerm, fields) => {
+    if (!searchTerm || !data || !Array.isArray(data)) return data || [];
+    return data.filter(item =>
+      fields.some(field => {
+        const value = field.split('.').reduce((obj, key) => obj?.[key], item);
+        return value && value.toString().toLowerCase().includes(searchTerm.toLowerCase());
+      })
+    );
   };
 
   const allowedRoles = ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin', 'staff'];
@@ -461,13 +483,22 @@ const AdminPage = () => {
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <h2 className="text-xl font-semibold text-gray-900">User Management</h2>
-                  <button
-                    onClick={() => openModal('user')}
-                    className="bg-emerald-500 text-white px-4 py-2 rounded-lg hover:bg-emerald-600 flex items-center gap-2 w-full sm:w-auto"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add User
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                    <input
+                      type="text"
+                      placeholder="Search users..."
+                      value={searchTerms.users}
+                      onChange={(e) => handleSearchChange('users', e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    />
+                    <button
+                      onClick={() => openModal('user')}
+                      className="bg-emerald-500 text-white px-4 py-2 rounded-lg hover:bg-emerald-600 flex items-center gap-2 w-full sm:w-auto"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add User
+                    </button>
+                  </div>
                 </div>
                 <div className="p-6">
                   <div className="overflow-x-auto">
@@ -483,7 +514,7 @@ const AdminPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {users && users.map && users.map((user) => (
+                        {filterData(users, searchTerms.users, ['name', 'role', 'matricNumber', 'staffId', 'department.name']).map((user) => (
                           <tr key={user._id} className="border-b border-gray-100">
                             <td className="py-3 px-4">{user.name}</td>
                             <td className="py-3 px-4">
@@ -538,13 +569,22 @@ const AdminPage = () => {
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <h2 className="text-xl font-semibold text-gray-900">Building Management</h2>
-                  <button
-                    onClick={() => openModal('building')}
-                    className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center gap-2 w-full sm:w-auto"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Building
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                    <input
+                      type="text"
+                      placeholder="Search buildings..."
+                      value={searchTerms.buildings}
+                      onChange={(e) => handleSearchChange('buildings', e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <button
+                      onClick={() => openModal('building')}
+                      className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center gap-2 w-full sm:w-auto"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Building
+                    </button>
+                  </div>
                 </div>
                 <div className="p-6">
                   <div className="overflow-x-auto">
@@ -559,7 +599,7 @@ const AdminPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {buildings && buildings.map && buildings.map((building) => (
+                        {filterData(buildings, searchTerms.buildings, ['name', 'department.name', 'description']).map((building) => (
                           <tr key={building._id} className="border-b border-gray-100">
                             <td className="py-3 px-4">{building.name}</td>
                             <td className="py-3 px-4 font-mono text-sm">{building.code}</td>
@@ -596,13 +636,22 @@ const AdminPage = () => {
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <h2 className="text-xl font-semibold text-gray-900">Department Management</h2>
-                  <button
-                    onClick={() => openModal('department')}
-                    className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 flex items-center gap-2 w-full sm:w-auto"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Department
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                    <input
+                      type="text"
+                      placeholder="Search departments..."
+                      value={searchTerms.departments}
+                      onChange={(e) => handleSearchChange('departments', e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                    <button
+                      onClick={() => openModal('department')}
+                      className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 flex items-center gap-2 w-full sm:w-auto"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Department
+                    </button>
+                  </div>
                 </div>
                 <div className="p-6">
                   <div className="overflow-x-auto">
@@ -617,7 +666,7 @@ const AdminPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {departments && departments.map && departments.map((department) => (
+                        {filterData(departments, searchTerms.departments, ['name', 'faculty', 'hodName', 'departmentalAdmin.name']).map((department) => (
                           <tr key={department._id} className="border-b border-gray-100">
                             <td className="py-3 px-4">{department.name}</td>
                             <td className="py-3 px-4">{department.faculty}</td>
@@ -658,15 +707,24 @@ const AdminPage = () => {
                   <h2 className="text-xl font-semibold text-gray-900">
                     {user.role === 'lecturer_admin' ? 'My Courses' : 'Course Management'}
                   </h2>
-                  {(user.role === 'system_admin' || user.role === 'departmental_admin') && (
-                    <button
-                      onClick={() => openModal('course')}
-                      className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 flex items-center gap-2 w-full sm:w-auto"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Course
-                    </button>
-                  )}
+                  <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                    <input
+                      type="text"
+                      placeholder="Search courses..."
+                      value={searchTerms.courses}
+                      onChange={(e) => handleSearchChange('courses', e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    />
+                    {(user.role === 'system_admin' || user.role === 'departmental_admin') && (
+                      <button
+                        onClick={() => openModal('course')}
+                        className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 flex items-center gap-2 w-full sm:w-auto"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Course
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="p-6">
                   <div className="overflow-x-auto">
@@ -682,7 +740,7 @@ const AdminPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {courses && courses.map && courses.map((course) => (
+                        {filterData(courses, searchTerms.courses, ['code', 'title', 'department.name', 'lecturerId.name', 'lecturer.name']).map((course) => (
                           <tr key={course._id} className="border-b border-gray-100">
                             <td className="py-3 px-4 font-mono text-sm">{course.code}</td>
                             <td className="py-3 px-4">{course.title}</td>
@@ -718,15 +776,24 @@ const AdminPage = () => {
 
             {activeTab === 'quizzes' && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+                <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <h2 className="text-xl font-semibold text-gray-900">Quiz Management</h2>
-                  <button
-                    onClick={() => openModal('quiz')}
-                    className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Quiz
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                    <input
+                      type="text"
+                      placeholder="Search quizzes..."
+                      value={searchTerms.quizzes}
+                      onChange={(e) => handleSearchChange('quizzes', e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
+                    <button
+                      onClick={() => openModal('quiz')}
+                      className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 flex items-center gap-2 w-full sm:w-auto"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Quiz
+                    </button>
+                  </div>
                 </div>
                 <div className="p-6">
                   <div className="overflow-x-auto">
@@ -741,7 +808,7 @@ const AdminPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {quizzes && quizzes.map && quizzes.map((quiz) => (
+                        {filterData(quizzes, searchTerms.quizzes, ['title', 'course.title', 'course.name', 'createdBy.name']).map((quiz) => (
                           <tr key={quiz._id} className="border-b border-gray-100">
                             <td className="py-3 px-4">{quiz.title}</td>
                             <td className="py-3 px-4">{quiz.course?.title || quiz.course?.name || 'N/A'}</td>
