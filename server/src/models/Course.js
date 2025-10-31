@@ -26,10 +26,6 @@ const courseSchema = new mongoose.Schema({
     required: [true, 'Owning department is required']
   },
   departments_offering: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Department'
-  }],
-  departments_offering: [{
     department: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Department',

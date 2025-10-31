@@ -680,9 +680,9 @@ const AdminPage = () => {
 
                 {modalType === 'course-offering' && user.role === 'departmental_admin' && (
                   <>
-                    <div className="text-lg font-semibold text-blue-700 mb-4">Create Course Offering</div>
+                    <div className="text-lg font-semibold text-blue-700 mb-4">Add Course Offering</div>
                     <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded border-l-4 border-blue-400 mb-4">
-                      <strong>Departmental Admin:</strong> Select a course from the global catalog and create an offering for your department. Configure the level, schedule, and assign a lecturer.
+                      <strong>Departmental Admin:</strong> Select a course and create an offering for your department.
                     </div>
 
                     {/* Course Selection */}
@@ -690,13 +690,13 @@ const AdminPage = () => {
                       name="courseId"
                       value={formData.courseId || ''}
                       onChange={handleInputChange}
-                      className="w-full p-2 border rounded mb-6"
+                      className="w-full p-2 border rounded mb-4"
                       required
                     >
                       <option value="">Select Course to Offer</option>
                       {courses && courses.filter && courses.filter(course =>
                         !course.baseCourseId && // Only show base courses (not offerings)
-                        course.department !== user.department // Don't show courses already owned by this department
+                        course.departments_offering?.includes(user.department) // Only show courses assigned to this department
                       ).map(course => (
                         <option key={course._id} value={course._id}>
                           {course.code} - {course.title}
@@ -705,90 +705,73 @@ const AdminPage = () => {
                     </select>
 
                     {/* Offering Configuration */}
-                    <div className="border-t pt-6">
-                      <h4 className="text-md font-semibold text-gray-800 mb-4">Offering Configuration</h4>
-                      <p className="text-sm text-gray-600 mb-4">Configure how this course will be offered in your department.</p>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <input
-                          type="number"
-                          name="level"
-                          placeholder="Level (100-800)"
-                          value={formData.level || ''}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                          min="100"
-                          max="800"
-                          required
-                        />
-                        <select
-                          name="lecturerId"
-                          value={formData.lecturerId || ''}
-                          onChange={handleInputChange}
-                          className="w-full p-2 border rounded"
-                          required
-                        >
-                          <option value="">Select Lecturer</option>
-                          {users && users.filter && users.filter(u => u.role === 'lecturer_admin').map(lecturer => (
-                            <option key={lecturer._id} value={lecturer._id}>
-                              {lecturer.name} ({lecturer.staffId})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Schedule Information */}
-                      <div className="mb-6">
-                        <h5 className="font-medium text-gray-700 mb-3">Schedule Information</h5>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <input
-                            type="text"
-                            name="schedule"
-                            placeholder="Schedule (e.g., Mon 10:00-11:00, Wed 14:00-15:00)"
-                            value={formData.schedule || ''}
-                            onChange={handleInputChange}
-                            className="w-full p-2 border rounded"
-                          />
-                          <select
-                            name="semester"
-                            value={formData.semester || 'both'}
-                            onChange={handleInputChange}
-                            className="w-full p-2 border rounded"
-                          >
-                            <option value="first">First Semester</option>
-                            <option value="second">Second Semester</option>
-                            <option value="both">Both Semesters</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Additional Information */}
-                      <div className="mb-6">
-                        <h5 className="font-medium text-gray-700 mb-3">Additional Information</h5>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <input
-                            type="text"
-                            name="venue"
-                            placeholder="Venue/Room (Optional)"
-                            value={formData.venue || ''}
-                            onChange={handleInputChange}
-                            className="w-full p-2 border rounded"
-                          />
-                          <input
-                            type="number"
-                            name="maxStudents"
-                            placeholder="Max Students (Optional)"
-                            value={formData.maxStudents || ''}
-                            onChange={handleInputChange}
-                            className="w-full p-2 border rounded"
-                            min="1"
-                          />
-                        </div>
-                      </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <input
+                        type="number"
+                        name="level"
+                        placeholder="Level (100-800)"
+                        value={formData.level || ''}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border rounded"
+                        min="100"
+                        max="800"
+                        required
+                      />
+                      <select
+                        name="lecturerId"
+                        value={formData.lecturerId || ''}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border rounded"
+                        required
+                      >
+                        <option value="">Select Lecturer</option>
+                        {users && users.filter && users.filter(u => u.role === 'lecturer_admin').map(lecturer => (
+                          <option key={lecturer._id} value={lecturer._id}>
+                            {lecturer.name} ({lecturer.staffId})
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded border-l-4 border-blue-400 mt-4">
-                      <strong>Note:</strong> This will create a course offering for your department. The selected lecturer will be able to manage this specific course instance.
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <input
+                        type="text"
+                        name="schedule"
+                        placeholder="Schedule (e.g., Mon 10-11, Wed 2-3)"
+                        value={formData.schedule || ''}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border rounded"
+                      />
+                      <select
+                        name="semester"
+                        value={formData.semester || 'both'}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border rounded"
+                      >
+                        <option value="first">First Semester</option>
+                        <option value="second">Second Semester</option>
+                        <option value="both">Both Semesters</option>
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <input
+                        type="text"
+                        name="venue"
+                        placeholder="Venue/Room"
+                        value={formData.venue || ''}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border rounded"
+                      />
+                      <input
+                        type="number"
+                        name="maxStudents"
+                        placeholder="Max Students"
+                        value={formData.maxStudents || ''}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border rounded"
+                        min="1"
+                      />
                     </div>
                   </>
                 )}
@@ -1028,7 +1011,7 @@ const AdminPage = () => {
                   <h2 className="text-xl font-semibold text-gray-900">
                     {user.role === 'system_admin' && 'Global Course Templates'}
                     {user.role === 'departmental_admin' && 'Department Course Offerings'}
-                    {user.role === 'lecturer_admin' && 'My Teaching Schedule'}
+                    {user.role === 'lecturer_admin' && 'My Assigned Courses'}
                   </h2>
                   <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                     <input
@@ -1044,7 +1027,7 @@ const AdminPage = () => {
                         className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 flex items-center gap-2 w-full sm:w-auto"
                       >
                         <Plus className="w-4 h-4" />
-                        Create Course & Assign Owner
+                        Create Global Course Template
                       </button>
                     )}
                     {user.role === 'departmental_admin' && (
@@ -1067,7 +1050,7 @@ const AdminPage = () => {
                             <>
                               <th className="text-left py-3 px-4 font-medium text-gray-700">Code</th>
                               <th className="text-left py-3 px-4 font-medium text-gray-700">Title</th>
-                              <th className="text-left py-3 px-4 font-medium text-gray-700">Owner Department</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Faculty</th>
                               <th className="text-left py-3 px-4 font-medium text-gray-700">Offering Departments</th>
                               <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                             </>
@@ -1076,8 +1059,9 @@ const AdminPage = () => {
                             <>
                               <th className="text-left py-3 px-4 font-medium text-gray-700">Code</th>
                               <th className="text-left py-3 px-4 font-medium text-gray-700">Title</th>
-                              <th className="text-left py-3 px-4 font-medium text-gray-700">Assigned Lecturers</th>
-                              <th className="text-left py-3 px-4 font-medium text-gray-700">Offering Levels</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Lecturer</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Level</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Schedule</th>
                               <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
                             </>
                           )}
@@ -1085,80 +1069,105 @@ const AdminPage = () => {
                             <>
                               <th className="text-left py-3 px-4 font-medium text-gray-700">Code</th>
                               <th className="text-left py-3 px-4 font-medium text-gray-700">Title</th>
-                              <th className="text-left py-3 px-4 font-medium text-gray-700">Class Department</th>
                               <th className="text-left py-3 px-4 font-medium text-gray-700">Level</th>
                               <th className="text-left py-3 px-4 font-medium text-gray-700">Schedule</th>
+                              <th className="text-left py-3 px-4 font-medium text-gray-700">Students</th>
                             </>
                           )}
                         </tr>
                       </thead>
                       <tbody>
-                        {user.role === 'system_admin' && filterData(courses, searchTerms.courses, ['code', 'title', 'department.name']).map((course) => (
-                          <tr key={course._id} className="border-b border-gray-100">
-                            <td className="py-3 px-4 font-mono text-sm">{course.code}</td>
-                            <td className="py-3 px-4">{course.title}</td>
-                            <td className="py-3 px-4">{course.department?.name || 'N/A'}</td>
-                            <td className="py-3 px-4">
-                              <span className="text-sm text-gray-600">Departments offering this course</span>
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => openModal('course', course)}
-                                  className="text-blue-600 hover:text-blue-800"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete('courses', course._id)}
-                                  className="text-red-600 hover:text-red-800"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                        {user.role === 'system_admin' && filterData(courses, searchTerms.courses, ['code', 'title', 'faculty']).map((course) => (
+                           <tr key={course._id} className="border-b border-gray-100">
+                             <td className="py-3 px-4 font-mono text-sm">{course.code}</td>
+                             <td className="py-3 px-4">{course.title}</td>
+                             <td className="py-3 px-4">{course.faculty}</td>
+                             <td className="py-3 px-4">
+                               <div className="text-sm">
+                                 {course.departments_offering && course.departments_offering.length > 0 ? (
+                                   <div className="flex flex-wrap gap-1">
+                                     {course.departments_offering.slice(0, 3).map((offering, idx) => (
+                                       <span key={idx} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                                         {offering.department?.name || 'Unknown'}
+                                       </span>
+                                     ))}
+                                     {course.departments_offering.length > 3 && (
+                                       <span className="text-gray-500 text-xs">+{course.departments_offering.length - 3} more</span>
+                                     )}
+                                   </div>
+                                 ) : (
+                                   <span className="text-gray-500">No departments assigned</span>
+                                 )}
+                               </div>
+                             </td>
+                             <td className="py-3 px-4">
+                               <div className="flex gap-2">
+                                 <button
+                                   onClick={() => openModal('course', course)}
+                                   className="text-blue-600 hover:text-blue-800"
+                                 >
+                                   <Edit className="w-4 h-4" />
+                                 </button>
+                                 <button
+                                   onClick={() => handleDelete('courses', course._id)}
+                                   className="text-red-600 hover:text-red-800"
+                                 >
+                                   <Trash2 className="w-4 h-4" />
+                                 </button>
+                               </div>
+                             </td>
+                           </tr>
+                         ))}
 
-                        {user.role === 'departmental_admin' && filterData(courses, searchTerms.courses, ['code', 'title', 'department.name', 'lecturerId.name']).map((course) => (
-                          <tr key={course._id} className="border-b border-gray-100">
-                            <td className="py-3 px-4 font-mono text-sm">{course.code}</td>
-                            <td className="py-3 px-4">{course.title}</td>
-                            <td className="py-3 px-4">{course.lecturerId?.name || course.lecturer?.name || 'Not Assigned'}</td>
-                            <td className="py-3 px-4">{course.level} Level</td>
-                            <td className="py-3 px-4">
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => openModal('course-offering', course)}
-                                  className="text-blue-600 hover:text-blue-800"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete('courses', course._id)}
-                                  className="text-red-600 hover:text-red-800"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                         {user.role === 'departmental_admin' && filterData(courses, searchTerms.courses, ['code', 'title', 'lecturerId.name']).map((course) => (
+                           <tr key={course._id} className="border-b border-gray-100">
+                             <td className="py-3 px-4 font-mono text-sm">{course.code}</td>
+                             <td className="py-3 px-4">{course.title}</td>
+                             <td className="py-3 px-4">{course.lecturerId?.name || 'Not Assigned'}</td>
+                             <td className="py-3 px-4">{course.level} Level</td>
+                             <td className="py-3 px-4">
+                               <div className="text-sm">
+                                 <div className="font-medium">{course.schedule || 'TBA'}</div>
+                                 <div className="text-gray-500">{course.venue || 'TBA'}</div>
+                               </div>
+                             </td>
+                             <td className="py-3 px-4">
+                               <div className="flex gap-2">
+                                 <button
+                                   onClick={() => openModal('course-offering', course)}
+                                   className="text-blue-600 hover:text-blue-800"
+                                 >
+                                   <Edit className="w-4 h-4" />
+                                 </button>
+                                 <button
+                                   onClick={() => handleDelete('courses', course._id)}
+                                   className="text-red-600 hover:text-red-800"
+                                 >
+                                   <Trash2 className="w-4 h-4" />
+                                 </button>
+                               </div>
+                             </td>
+                           </tr>
+                         ))}
 
-                        {user.role === 'lecturer_admin' && filterData(courses, searchTerms.courses, ['code', 'title', 'department.name']).map((course) => (
-                          <tr key={course._id} className="border-b border-gray-100">
-                            <td className="py-3 px-4 font-mono text-sm">{course.code}</td>
-                            <td className="py-3 px-4">{course.title}</td>
-                            <td className="py-3 px-4">{course.department?.name || 'N/A'}</td>
-                            <td className="py-3 px-4">{course.level} Level</td>
-                            <td className="py-3 px-4">
-                              <div className="text-sm">
-                                <div className="font-medium">{course.schedule || 'TBA'}</div>
-                                <div className="text-gray-500">{course.semester || 'Both semesters'}</div>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                         {user.role === 'lecturer_admin' && filterData(courses, searchTerms.courses, ['code', 'title']).map((course) => (
+                           <tr key={course._id} className="border-b border-gray-100">
+                             <td className="py-3 px-4 font-mono text-sm">{course.code}</td>
+                             <td className="py-3 px-4">{course.title}</td>
+                             <td className="py-3 px-4">{course.level} Level</td>
+                             <td className="py-3 px-4">
+                               <div className="text-sm">
+                                 <div className="font-medium">{course.schedule || 'TBA'}</div>
+                                 <div className="text-gray-500">{course.venue || 'TBA'}</div>
+                               </div>
+                             </td>
+                             <td className="py-3 px-4">
+                               <div className="text-sm text-center">
+                                 {course.students?.length || 0} enrolled
+                               </div>
+                             </td>
+                           </tr>
+                         ))}
                       </tbody>
                     </table>
                   </div>
@@ -1523,13 +1532,13 @@ const AdminPage = () => {
 
                   {modalType === 'course' && user.role === 'system_admin' && (
                     <>
-                      <div className="text-lg font-semibold text-green-700 mb-4">Create Course & Configure Offerings</div>
+                      <div className="text-lg font-semibold text-green-700 mb-4">Create Global Course Template</div>
                       <div className="text-sm text-green-600 bg-green-50 p-3 rounded border-l-4 border-green-400 mb-4">
-                        <strong>System Admin:</strong> Create a course and configure which departments can offer it at which levels. Use the + buttons to add multiple departments and levels as needed.
+                        <strong>System Admin:</strong> Create a course template and assign departments that can offer it.
                       </div>
 
                       {/* Basic Course Information */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <input
                           type="text"
                           name="code"
@@ -1550,18 +1559,7 @@ const AdminPage = () => {
                         />
                       </div>
 
-                      <textarea
-                        name="description"
-                        placeholder="Course Description"
-                        value={formData.description || ''}
-                        onChange={handleInputChange}
-                        className="w-full p-2 border rounded mb-6"
-                        rows="3"
-                        maxLength={1000}
-                        required
-                      />
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <input
                           type="number"
                           name="credit"
@@ -1576,7 +1574,7 @@ const AdminPage = () => {
                         <input
                           type="text"
                           name="faculty"
-                          placeholder="Faculty (e.g., Science, Engineering)"
+                          placeholder="Faculty"
                           value={formData.faculty || ''}
                           onChange={handleInputChange}
                           className="w-full p-2 border rounded"
@@ -1584,12 +1582,23 @@ const AdminPage = () => {
                         />
                       </div>
 
-                      {/* Prerequisites and Corequisites */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      <textarea
+                        name="description"
+                        placeholder="Course Description"
+                        value={formData.description || ''}
+                        onChange={handleInputChange}
+                        className="w-full p-2 border rounded mb-4"
+                        rows="2"
+                        maxLength={1000}
+                        required
+                      />
+
+                      {/* Prerequisites */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <input
                           type="text"
                           name="prerequisites"
-                          placeholder="Prerequisites (comma-separated codes)"
+                          placeholder="Prerequisites (comma-separated)"
                           value={formData.prerequisites ? formData.prerequisites.join(', ') : ''}
                           onChange={(e) => handleInputChange({
                             target: {
@@ -1602,7 +1611,7 @@ const AdminPage = () => {
                         <input
                           type="text"
                           name="corequisites"
-                          placeholder="Corequisites (comma-separated codes)"
+                          placeholder="Corequisites (comma-separated)"
                           value={formData.corequisites ? formData.corequisites.join(', ') : ''}
                           onChange={(e) => handleInputChange({
                             target: {
@@ -1614,98 +1623,36 @@ const AdminPage = () => {
                         />
                       </div>
 
-                      {/* Department Offerings Configuration */}
-                      <div className="border-t pt-6">
-                        <h4 className="text-md font-semibold text-gray-800 mb-4">Department Offerings</h4>
-                        <p className="text-sm text-gray-600 mb-4">Configure which departments can offer this course and at which levels.</p>
-
-                        {/* Render existing department offerings */}
-                        {formData.departments_offering && formData.departments_offering.map((offering, index) => (
-                          <div key={index} className="bg-gray-50 p-4 rounded-lg mb-4 border">
-                            <div className="flex justify-between items-center mb-3">
-                              <h5 className="font-medium text-gray-700">Offering #{index + 1}</h5>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const newOfferings = formData.departments_offering.filter((_, i) => i !== index);
-                                  setFormData(prev => ({ ...prev, departments_offering: newOfferings }));
-                                }}
-                                className="text-red-500 hover:text-red-700"
-                              >
-                                Remove
-                              </button>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <select
-                                value={offering.department || ''}
-                                onChange={(e) => {
-                                  const newOfferings = [...formData.departments_offering];
-                                  newOfferings[index].department = e.target.value;
-                                  setFormData(prev => ({ ...prev, departments_offering: newOfferings }));
-                                }}
-                                className="w-full p-2 border rounded"
-                                required
-                              >
-                                <option value="">Select Department</option>
-                                {departments && departments.map && departments.map(dept => (
-                                  <option key={dept._id} value={dept._id}>{dept.name}</option>
-                                ))}
-                              </select>
-
+                      {/* Department Assignment */}
+                      <div className="border-t pt-4">
+                        <h4 className="text-md font-semibold text-gray-800 mb-3">Offering Departments</h4>
+                        <div className="max-h-32 overflow-y-auto space-y-2">
+                          {departments && departments.map && departments.map(dept => (
+                            <label key={dept._id} className="flex items-center gap-3 p-2 border rounded hover:bg-gray-50">
                               <input
-                                type="number"
-                                placeholder="Level (100-800)"
-                                value={offering.level || ''}
+                                type="checkbox"
+                                checked={formData.departments_offering?.includes(dept._id) || false}
                                 onChange={(e) => {
-                                  const newOfferings = [...formData.departments_offering];
-                                  newOfferings[index].level = parseInt(e.target.value);
-                                  setFormData(prev => ({ ...prev, departments_offering: newOfferings }));
+                                  const currentDepts = formData.departments_offering || [];
+                                  if (e.target.checked) {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      departments_offering: [...currentDepts, dept._id]
+                                    }));
+                                  } else {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      departments_offering: currentDepts.filter(id => id !== dept._id)
+                                    }));
+                                  }
                                 }}
-                                className="w-full p-2 border rounded"
-                                min="100"
-                                max="800"
-                                required
+                                className="w-4 h-4 text-blue-600"
                               />
-                            </div>
-
-                            {/* Lecturer selection for this offering */}
-                            <div className="mt-3">
-                              <select
-                                value={offering.lecturerId || ''}
-                                onChange={(e) => {
-                                  const newOfferings = [...formData.departments_offering];
-                                  newOfferings[index].lecturerId = e.target.value;
-                                  setFormData(prev => ({ ...prev, departments_offering: newOfferings }));
-                                }}
-                                className="w-full p-2 border rounded"
-                              >
-                                <option value="">Select Lecturer (Optional)</option>
-                                {users && users.filter && users.filter(u => u.role === 'lecturer_admin').map(lecturer => (
-                                  <option key={lecturer._id} value={lecturer._id}>{lecturer.name} ({lecturer.staffId})</option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                        ))}
-
-                        {/* Add new offering button */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newOffering = { department: '', level: '', lecturerId: '' };
-                            const newOfferings = [...(formData.departments_offering || []), newOffering];
-                            setFormData(prev => ({ ...prev, departments_offering: newOfferings }));
-                          }}
-                          className="w-full bg-blue-50 text-blue-600 border-2 border-dashed border-blue-300 rounded-lg p-4 hover:bg-blue-100 flex items-center justify-center gap-2"
-                        >
-                          <Plus className="w-5 h-5" />
-                          Add Department Offering
-                        </button>
-                      </div>
-
-                      <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded border-l-4 border-blue-400 mt-6">
-                        <strong>Note:</strong> You can add multiple departments and configure different levels for each. Each department can offer this course at different levels with different lecturers assigned.
+                              <span className="font-medium text-sm">{dept.name}</span>
+                              <span className="text-xs text-gray-500">({dept.faculty})</span>
+                            </label>
+                          ))}
+                        </div>
                       </div>
                     </>
                   )}
