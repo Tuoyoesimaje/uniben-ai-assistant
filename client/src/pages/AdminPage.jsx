@@ -223,11 +223,22 @@ const AdminPage = () => {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     try {
-      const url = editingItem
+      let url = editingItem
         ? `/api/admin/${modalType}s/${editingItem._id}`
         : `/api/admin/${modalType}s`;
 
-      const method = editingItem ? 'PUT' : 'POST';
+      let method = editingItem ? 'PUT' : 'POST';
+
+      // Special-case department admins adding course offerings: call PUT /api/admin/courses/:id
+      if (modalType === 'course-offering') {
+        const selectedCourseId = formData.selectedCourse || formData.selected_course || '';
+        if (!selectedCourseId) {
+          alert('Please select a course to offer');
+          return;
+        }
+        url = `/api/admin/courses/${selectedCourseId}`;
+        method = 'PUT';
+      }
 
       console.log('Submitting form:', { url, method, formData });
 
@@ -506,6 +517,98 @@ const AdminPage = () => {
                           </div>
                         </div>
                       </div>
+                    </>
+                  )}
+
+                  {modalType === 'course-offering' && user.role === 'departmental_admin' && (
+                    <>
+                      <div className="text-lg font-semibold text-blue-700 mb-4">Add Course Offering to Department</div>
+                      <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded border-l-4 border-blue-400 mb-4">
+                        <strong>Department Admin:</strong> Select a course from the global list and configure one or more offerings (level, schedule, lecturer). Click + to add multiple offerings.
+                      </div>
+
+                      {/* Select existing course */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Select Course</label>
+                        <select
+                          name="selectedCourse"
+                          value={formData.selectedCourse || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, selectedCourse: e.target.value }))}
+                          className="w-full p-2 border rounded"
+                          required
+                        >
+                          <option value="">Choose a course to offer</option>
+                          {courses && courses.map(c => (
+                            <option key={c._id} value={c._id}>{c.code} - {c.title}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Offerings list (dynamic) */}
+                      <div className="space-y-4 mb-4">
+                        {(formData.departments_offering || []).map((offering, idx) => (
+                          <div key={idx} className="bg-gray-50 p-4 rounded border">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <input
+                                type="number"
+                                placeholder="Level (100-800)"
+                                value={offering.level || ''}
+                                onChange={(e) => {
+                                  const newOfferings = [...(formData.departments_offering || [])];
+                                  newOfferings[idx] = { ...newOfferings[idx], level: parseInt(e.target.value) };
+                                  setFormData(prev => ({ ...prev, departments_offering: newOfferings }));
+                                }}
+                                className="w-full p-2 border rounded"
+                                min="100"
+                                max="800"
+                                required
+                              />
+
+                              <input
+                                type="text"
+                                placeholder="Schedule (e.g., Mon 9-11am)"
+                                value={offering.schedule || ''}
+                                onChange={(e) => {
+                                  const newOfferings = [...(formData.departments_offering || [])];
+                                  newOfferings[idx] = { ...newOfferings[idx], schedule: e.target.value };
+                                  setFormData(prev => ({ ...prev, departments_offering: newOfferings }));
+                                }}
+                                className="w-full p-2 border rounded"
+                                required
+                              />
+
+                              <select
+                                value={offering.lecturerId || ''}
+                                onChange={(e) => {
+                                  const newOfferings = [...(formData.departments_offering || [])];
+                                  newOfferings[idx] = { ...newOfferings[idx], lecturerId: e.target.value };
+                                  setFormData(prev => ({ ...prev, departments_offering: newOfferings }));
+                                }}
+                                className="w-full p-2 border rounded"
+                              >
+                                <option value="">Select Lecturer (Optional)</option>
+                                {users && users.filter && users.filter(u => u.role === 'lecturer_admin').map(lect => (
+                                  <option key={lect._id} value={lect._id}>{lect.name} ({lect.staffId})</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div className="mt-3 text-right">
+                              <button type="button" onClick={() => {
+                                const newOfferings = (formData.departments_offering || []).filter((_, i) => i !== idx);
+                                setFormData(prev => ({ ...prev, departments_offering: newOfferings }));
+                              }} className="text-red-600">Remove</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button type="button" onClick={() => {
+                        const newOfferings = [...(formData.departments_offering || []), { department: user.department, level: '', schedule: '', lecturerId: '' }];
+                        setFormData(prev => ({ ...prev, departments_offering: newOfferings }));
+                      }} className="w-full bg-blue-50 text-blue-600 border-2 border-dashed border-blue-300 rounded-lg p-3 hover:bg-blue-100 flex items-center justify-center gap-2 mb-4">
+                        <Plus className="w-4 h-4" /> Add Offering
+                      </button>
                     </>
                   )}
 

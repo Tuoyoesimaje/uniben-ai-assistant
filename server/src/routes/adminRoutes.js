@@ -324,25 +324,44 @@ router.post('/courses', async (req, res) => {
       });
     }
 
-    // Simple server-side validation to return clearer errors to the client
-    const requiredFields = ['code', 'title', 'faculty', 'level', 'credit'];
-    for (const field of requiredFields) {
-      if (!req.body[field]) {
-        return res.status(400).json({ success: false, message: `Missing required field: ${field}` });
-      }
+    // Normalize departments_offering: allow array of department IDs (legacy) or objects
+    if (Array.isArray(req.body.departments_offering) && req.body.departments_offering.length > 0) {
+      const normalized = req.body.departments_offering.map(item => {
+        if (!item) return null;
+        if (typeof item === 'string' || typeof item === 'number') {
+          return { department: item };
+        }
+        // already an object - keep only known fields
+        return {
+          department: item.department || item.departmentId || null,
+          level: item.level || null,
+          lecturerId: item.lecturerId || item.lecturer || null,
+          schedule: item.schedule || null,
+          semester: item.semester || 'both',
+          isActive: item.isActive !== undefined ? item.isActive : true
+        };
+      }).filter(Boolean);
+      req.body.departments_offering = normalized;
     }
 
     // If no owning department provided but department offerings exist,
     // use the first offering's department as the owning department to satisfy model requirement.
     if (!req.body.department && Array.isArray(req.body.departments_offering) && req.body.departments_offering.length > 0) {
-      try {
-        const firstOffering = req.body.departments_offering[0];
-        if (firstOffering.department) {
-          req.body.department = firstOffering.department;
-        }
-      } catch (e) {
-        // ignore
+      const firstOffering = req.body.departments_offering[0];
+      if (firstOffering && firstOffering.department) {
+        req.body.department = firstOffering.department;
       }
+    }
+
+    // Ensure numeric fields are numbers
+    if (req.body.credit) req.body.credit = Number(req.body.credit);
+    if (req.body.level) req.body.level = Number(req.body.level);
+
+    // Provide sensible defaults so system admin can create global course templates without specifying a level
+    if (!req.body.level) {
+      // try to derive from first offering
+      const firstOfferingLevel = req.body.departments_offering && req.body.departments_offering[0] && req.body.departments_offering[0].level;
+      req.body.level = firstOfferingLevel ? Number(firstOfferingLevel) : 100; // default to 100
     }
 
     if (!req.body.department) {
