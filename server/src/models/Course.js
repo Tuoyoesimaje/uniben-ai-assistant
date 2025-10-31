@@ -242,6 +242,19 @@ const courseSchema = new mongoose.Schema({
     default: 0,
     min: [0, 'Enrollment count cannot be negative']
   },
+  baseCourseId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course'
+  },
+  venue: {
+    type: String,
+    trim: true,
+    maxlength: [100, 'Venue cannot exceed 100 characters']
+  },
+  maxStudents: {
+    type: Number,
+    min: [1, 'Maximum students must be at least 1']
+  },
   createdAt: {
     type: Date,
     default: Date.now

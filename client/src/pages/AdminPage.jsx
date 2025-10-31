@@ -231,13 +231,21 @@ const AdminPage = () => {
 
       console.log('Submitting form:', { url, method, formData });
 
+      // Prepare payload - for courses ensure top-level department is set (use first offering as sensible default)
+      const payload = { ...formData };
+      if (modalType === 'course') {
+        if (!payload.department && Array.isArray(payload.departments_offering) && payload.departments_offering.length > 0) {
+          payload.department = payload.departments_offering[0].department || payload.departments_offering[0];
+        }
+      }
+
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
       const result = await response.json();
@@ -668,6 +676,121 @@ const AdminPage = () => {
                       </div>
                     </div>
                   </div>
+                )}
+
+                {modalType === 'course-offering' && user.role === 'departmental_admin' && (
+                  <>
+                    <div className="text-lg font-semibold text-blue-700 mb-4">Create Course Offering</div>
+                    <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded border-l-4 border-blue-400 mb-4">
+                      <strong>Departmental Admin:</strong> Select a course from the global catalog and create an offering for your department. Configure the level, schedule, and assign a lecturer.
+                    </div>
+
+                    {/* Course Selection */}
+                    <select
+                      name="courseId"
+                      value={formData.courseId || ''}
+                      onChange={handleInputChange}
+                      className="w-full p-2 border rounded mb-6"
+                      required
+                    >
+                      <option value="">Select Course to Offer</option>
+                      {courses && courses.filter && courses.filter(course =>
+                        !course.baseCourseId && // Only show base courses (not offerings)
+                        course.department !== user.department // Don't show courses already owned by this department
+                      ).map(course => (
+                        <option key={course._id} value={course._id}>
+                          {course.code} - {course.title}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Offering Configuration */}
+                    <div className="border-t pt-6">
+                      <h4 className="text-md font-semibold text-gray-800 mb-4">Offering Configuration</h4>
+                      <p className="text-sm text-gray-600 mb-4">Configure how this course will be offered in your department.</p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <input
+                          type="number"
+                          name="level"
+                          placeholder="Level (100-800)"
+                          value={formData.level || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          min="100"
+                          max="800"
+                          required
+                        />
+                        <select
+                          name="lecturerId"
+                          value={formData.lecturerId || ''}
+                          onChange={handleInputChange}
+                          className="w-full p-2 border rounded"
+                          required
+                        >
+                          <option value="">Select Lecturer</option>
+                          {users && users.filter && users.filter(u => u.role === 'lecturer_admin').map(lecturer => (
+                            <option key={lecturer._id} value={lecturer._id}>
+                              {lecturer.name} ({lecturer.staffId})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Schedule Information */}
+                      <div className="mb-6">
+                        <h5 className="font-medium text-gray-700 mb-3">Schedule Information</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <input
+                            type="text"
+                            name="schedule"
+                            placeholder="Schedule (e.g., Mon 10:00-11:00, Wed 14:00-15:00)"
+                            value={formData.schedule || ''}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border rounded"
+                          />
+                          <select
+                            name="semester"
+                            value={formData.semester || 'both'}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border rounded"
+                          >
+                            <option value="first">First Semester</option>
+                            <option value="second">Second Semester</option>
+                            <option value="both">Both Semesters</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Additional Information */}
+                      <div className="mb-6">
+                        <h5 className="font-medium text-gray-700 mb-3">Additional Information</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <input
+                            type="text"
+                            name="venue"
+                            placeholder="Venue/Room (Optional)"
+                            value={formData.venue || ''}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border rounded"
+                          />
+                          <input
+                            type="number"
+                            name="maxStudents"
+                            placeholder="Max Students (Optional)"
+                            value={formData.maxStudents || ''}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border rounded"
+                            min="1"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded border-l-4 border-blue-400 mt-4">
+                      <strong>Note:</strong> This will create a course offering for your department. The selected lecturer will be able to manage this specific course instance.
+                    </div>
+                  </>
                 )}
 
               </div>
@@ -1309,7 +1432,7 @@ const AdminPage = () => {
                         onChange={handleInputChange}
                         className="w-full p-2 border rounded"
                         rows="3"
-                        maxlength="1000"
+                        maxLength={1000}
                       />
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1434,7 +1557,7 @@ const AdminPage = () => {
                         onChange={handleInputChange}
                         className="w-full p-2 border rounded mb-6"
                         rows="3"
-                        maxlength="1000"
+                        maxLength={1000}
                         required
                       />
 

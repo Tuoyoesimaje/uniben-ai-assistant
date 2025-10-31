@@ -29,7 +29,8 @@ router.get('/users', requireSystemAdmin, async (req, res) => {
       .sort({ createdAt: -1 });
     res.json({ success: true, users });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('Create course error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 });
 
@@ -258,6 +259,7 @@ router.get('/courses', async (req, res) => {
 
 router.post('/courses', async (req, res) => {
   try {
+    console.log('Create course request body:', JSON.stringify(req.body).slice(0, 1000));
     const user = req.user;
 
     // Check permissions based on course management flow
@@ -265,11 +267,50 @@ router.post('/courses', async (req, res) => {
       // System admin can create global courses
       // No restrictions - creates the base course template
     } else if (user.role === 'departmental_admin') {
-      // Departmental admin can only add offerings to existing courses
-      return res.status(403).json({
-        success: false,
-        message: 'Departmental admins should use PUT to add department offerings to existing courses'
+      // Departmental admin creates course offerings from existing courses
+      const { courseId, level, lecturerId, schedule, semester, venue, maxStudents } = req.body;
+
+      if (!courseId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Course ID is required'
+        });
+      }
+
+      // Find the base course
+      const baseCourse = await Course.findById(courseId);
+      if (!baseCourse) {
+        return res.status(404).json({
+          success: false,
+          message: 'Base course not found'
+        });
+      }
+
+      // Create a new course offering (duplicate of base course with department-specific data)
+      const courseOffering = new Course({
+        code: baseCourse.code,
+        title: baseCourse.title,
+        description: baseCourse.description,
+        department: user.department, // This department is offering it
+        faculty: baseCourse.faculty,
+        level: level,
+        credit: baseCourse.credit,
+        semester: semester || baseCourse.semester,
+        prerequisites: baseCourse.prerequisites,
+        corequisites: baseCourse.corequisites,
+        lecturerId: lecturerId,
+        schedule: schedule,
+        // Additional offering-specific fields
+        venue: venue,
+        maxStudents: maxStudents,
+        // Mark this as an offering of the base course
+        baseCourseId: courseId
       });
+
+      await courseOffering.save();
+      await courseOffering.populate(['department', 'lecturerId', 'prerequisites']);
+      return res.status(201).json({ success: true, course: courseOffering });
+
     } else if (user.role === 'lecturer_admin') {
       // Lecturer admin cannot create courses
       return res.status(403).json({
@@ -281,6 +322,31 @@ router.post('/courses', async (req, res) => {
         success: false,
         message: 'Insufficient permissions to create courses'
       });
+    }
+
+    // Simple server-side validation to return clearer errors to the client
+    const requiredFields = ['code', 'title', 'faculty', 'level', 'credit'];
+    for (const field of requiredFields) {
+      if (!req.body[field]) {
+        return res.status(400).json({ success: false, message: `Missing required field: ${field}` });
+      }
+    }
+
+    // If no owning department provided but department offerings exist,
+    // use the first offering's department as the owning department to satisfy model requirement.
+    if (!req.body.department && Array.isArray(req.body.departments_offering) && req.body.departments_offering.length > 0) {
+      try {
+        const firstOffering = req.body.departments_offering[0];
+        if (firstOffering.department) {
+          req.body.department = firstOffering.department;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    if (!req.body.department) {
+      return res.status(400).json({ success: false, message: 'Owning department is required (provide department or departments_offering)' });
     }
 
     const course = new Course(req.body);
