@@ -207,6 +207,27 @@ const AdminPage = () => {
   };
 
   const openModal = (type, item = null) => {
+    // For course-offering modal, when editing an existing course, prefill selectedCourse
+    if (type === 'course-offering' && item) {
+      const deptId = user?.department;
+      const offeringsForDept = (item.departments_offering || []).filter(off => {
+        const dep = off?.department || off;
+        // support both id and object shapes
+        return dep && (dep === deptId || dep._id === deptId);
+      }).map(off => ({
+        department: off.department?.toString ? off.department.toString() : off.department,
+        level: off.level || '',
+        schedule: off.schedule || '',
+        lecturerId: off.lecturerId?.toString ? off.lecturerId.toString() : off.lecturerId || ''
+      }));
+
+      setModalType(type);
+      setEditingItem(item);
+      setFormData({ ...item, selectedCourse: item._id, departments_offering: offeringsForDept });
+      setShowModal(true);
+      return;
+    }
+
     setModalType(type);
     setEditingItem(item);
     setFormData(item || {});
