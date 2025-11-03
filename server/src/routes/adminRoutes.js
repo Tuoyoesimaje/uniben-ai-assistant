@@ -24,6 +24,10 @@ router.use(authMiddleware);
 // We mount the same router at both the root (legacy) and '/system' so existing client calls keep working.
 router.use('/', require('./systemAdminRoutes'));
 router.use('/system', require('./systemAdminRoutes'));
+// Role-specific route groups (mounted for clarity and gradual migration)
+router.use('/department', require('./departmentAdminRoutes'));
+router.use('/lecturer', require('./lecturerAdminRoutes'));
+router.use('/bursary', require('./bursaryAdminRoutes'));
 
 // Building Management Routes
 router.get('/buildings', async (req, res) => {
@@ -165,62 +169,14 @@ router.post('/courses', async (req, res) => {
       // System admin can create global courses
       // No restrictions - creates the base course template
     } else if (user.role === 'departmental_admin') {
-      // Departmental admin creates course offerings from existing courses
-      const { courseId, level, lecturerId, schedule, semester, venue, maxStudents } = req.body;
-
-      if (!courseId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Course ID is required'
-        });
-      }
-
-      // Find the base course
-      const baseCourse = await Course.findById(courseId);
-      if (!baseCourse) {
-        return res.status(404).json({
-          success: false,
-          message: 'Base course not found'
-        });
-      }
-
-      // Create a new course offering (duplicate of base course with department-specific data)
-      const courseOffering = new Course({
-        code: baseCourse.code,
-        title: baseCourse.title,
-        description: baseCourse.description,
-        department: user.department, // This department is offering it
-        faculty: baseCourse.faculty,
-        level: level,
-        credit: baseCourse.credit,
-        semester: semester || baseCourse.semester,
-        prerequisites: baseCourse.prerequisites,
-        corequisites: baseCourse.corequisites,
-        lecturerId: lecturerId,
-        schedule: schedule,
-        // Additional offering-specific fields
-        venue: venue,
-        maxStudents: maxStudents,
-        // Mark this as an offering of the base course
-        baseCourseId: courseId
+      // Departmental admins should add offerings to existing base courses via PUT
+      // Creating duplicate Course documents for an offering causes code collisions and
+      // maintenance confusion. Instruct to use the PUT /courses/:id endpoint which
+      // correctly appends a departments_offering subdocument to the base course.
+      return res.status(400).json({
+        success: false,
+        message: 'Departmental admins must add offerings to an existing course via PUT /api/admin/courses/:courseId. Please use the department offerings flow.'
       });
-
-      // Record offering metadata on the departments_offering array so traceability is preserved
-      courseOffering.departments_offering = [{
-        department: user.department,
-        level: level,
-        lecturerId: lecturerId || null,
-        schedule: schedule || null,
-        semester: semester || baseCourse.semester || 'both',
-        assignedBy: req.user._id,
-        offeredAt: new Date(),
-        isActive: true
-      }];
-
-      await courseOffering.save();
-      await courseOffering.populate(['department', 'departments_offering.department', 'departments_offering.lecturerId', 'prerequisites']);
-      return res.status(201).json({ success: true, course: courseOffering });
-
     } else if (user.role === 'lecturer_admin') {
       // Lecturer admin cannot create courses
       return res.status(403).json({
@@ -349,70 +305,10 @@ router.put('/courses/:id', async (req, res) => {
       const updatedCourse = await Course.findByIdAndUpdate(req.params.id, req.body, { new: true })
         .populate(['department', 'departments_offering.department', 'departments_offering.lecturerId', 'prerequisites']);
       res.json({ success: true, course: updatedCourse });
-    } else if (user.role === 'departmental_admin') {
-      // Departmental admin can add/modify offerings for their department
-      const { departments_offering, ...otherUpdates } = req.body;
-
-      if (departments_offering) {
-        // Validate that all offerings are for their department
-        const invalidOfferings = departments_offering.filter(offering =>
-          offering.department.toString() !== user.department?.toString()
-        );
-
-        if (invalidOfferings.length > 0) {
-          return res.status(403).json({
-            success: false,
-            message: 'You can only manage offerings for your department'
-          });
-        }
-
-        // Add or update department offerings
-        const updatedOfferings = [...(course.departments_offering || [])];
-
-        departments_offering.forEach(newOffering => {
-          // Ensure offering belongs to this admin's department
-          const newDept = newOffering.department?.toString ? newOffering.department.toString() : String(newOffering.department);
-
-          // populate assignedBy/offeredAt for new offerings from this department
-          if (newDept === (user.department?.toString ? user.department.toString() : String(user.department))) {
-            if (!newOffering.assignedBy) newOffering.assignedBy = req.user._id;
-            if (!newOffering.offeredAt) newOffering.offeredAt = new Date();
-            if (newOffering.isActive === undefined) newOffering.isActive = true;
-          }
-
-          const existingIndex = updatedOfferings.findIndex(offering =>
-            offering.department.toString() === newDept &&
-            offering.level === newOffering.level
-          );
-
-          if (existingIndex >= 0) {
-            // Update existing offering (preserve existing assignedBy if present)
-            updatedOfferings[existingIndex] = { ...updatedOfferings[existingIndex].toObject?.() || updatedOfferings[existingIndex], ...newOffering };
-            if (!updatedOfferings[existingIndex].assignedBy && newDept === (user.department?.toString ? user.department.toString() : String(user.department))) {
-              updatedOfferings[existingIndex].assignedBy = req.user._id;
-            }
-            if (!updatedOfferings[existingIndex].offeredAt && newDept === (user.department?.toString ? user.department.toString() : String(user.department))) {
-              updatedOfferings[existingIndex].offeredAt = new Date();
-            }
-          } else {
-            // Add new offering
-            updatedOfferings.push(newOffering);
-          }
-        });
-
-        const updatedCourse = await Course.findByIdAndUpdate(
-          req.params.id,
-          { departments_offering: updatedOfferings, ...otherUpdates },
-          { new: true }
-        ).populate(['department', 'departments_offering.department', 'departments_offering.lecturerId', 'prerequisites']);
-
-        res.json({ success: true, course: updatedCourse });
-      } else {
-        // Regular update for other fields
-        const updatedCourse = await Course.findByIdAndUpdate(req.params.id, req.body, { new: true })
-          .populate(['department', 'departments_offering.department', 'departments_offering.lecturerId', 'prerequisites']);
-        res.json({ success: true, course: updatedCourse });
-      }
+    // Departmental admin handlers have been migrated to the role-specific
+    // router mounted at /api/admin/department. Departmental admins should call
+    // PUT /api/admin/department/courses/:id to add or modify offerings. The
+    // legacy departmental logic has been removed to centralize role routes.
     } else if (user.role === 'lecturer_admin') {
       // Lecturer admin can only update their assigned course offerings
       const userOffering = course.departments_offering?.find(offering =>
@@ -459,13 +355,9 @@ router.delete('/courses/:id', async (req, res) => {
     if (user.role === 'system_admin') {
       // System admin can delete any course
     } else if (user.role === 'departmental_admin') {
-      if (course.department.toString() !== user.department?.toString()) {
-        return res.status(403).json({
-          success: false,
-          message: 'You can only delete courses in your department'
-        });
-      }
-      // Departmental admin can delete courses in their department
+      // Departmental admins should use the department-specific delete endpoint:
+      // DELETE /api/admin/department/courses/:id
+      return res.status(400).json({ success: false, message: 'Departmental admins must delete courses via /api/admin/department/courses/:id' });
     } else if (user.role === 'lecturer_admin') {
       if (course.lecturerId?.toString() !== user._id.toString()) {
         return res.status(403).json({

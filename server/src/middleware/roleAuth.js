@@ -4,14 +4,16 @@ const User = require('../models/User');
 const requireRole = (allowedRoles) => {
   return async (req, res, next) => {
     try {
-      if (!req.user || !req.user.id) {
+      if (!req.user || !(req.user.id || req.user._id)) {
         return res.status(401).json({
           success: false,
           message: 'Authentication required'
         });
       }
 
-      const user = await User.findById(req.user.id);
+  // Tokens may contain `_id` or `id` depending on how they were signed.
+  const userId = req.user.id || req.user._id || (req.user._id && req.user._id.toString && req.user._id.toString());
+  const user = await User.findById(userId);
       if (!user || !user.isActive) {
         return res.status(401).json({
           success: false,

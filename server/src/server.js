@@ -163,6 +163,9 @@ const startServer = async () => {
   }
 };
 
-startServer();
+// Only start the server if this file is executed directly (not required by tests)
+if (require.main === module) {
+  startServer();
+}
 
 module.exports = app;

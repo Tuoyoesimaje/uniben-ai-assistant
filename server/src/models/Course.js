@@ -5,6 +5,8 @@ const courseSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Course code is required'],
     trim: true,
+    // Course code must be unique across base courses (departmental offerings are stored
+    // as subdocuments on the base course, so uniqueness avoids duplication/conflicts).
     unique: true,
     uppercase: true,
     match: [/^[A-Z]{2,4}\s?\d{3,4}[A-Z]?$/, 'Please enter a valid course code (e.g., CSC 201, MATH101)']

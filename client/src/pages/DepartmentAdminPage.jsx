@@ -49,10 +49,16 @@ const DepartmentAdminPage = () => {
     e.preventDefault();
     try {
       // departmental admin creates an offering by referencing a base course id
-      const payload = { ...createForm };
-      const res = await axios.post('/api/admin/courses', payload);
+      const { courseId, level, lecturerId, schedule, semester, venue, maxStudents } = createForm;
+      if (!courseId) return alert('Base Course ID is required');
+
+      // Use PUT to add a departments_offering to the base course. The server will
+      // default the offering.department to the current admin's department if omitted.
+      const offering = { level: Number(level || 100), lecturerId: lecturerId || null, schedule: schedule || null, semester: semester || 'both', venue: venue || null, maxStudents: maxStudents ? Number(maxStudents) : undefined };
+  const res = await axios.put(`/api/admin/department/courses/${courseId}`, { departments_offering: [offering] });
       if (res.data?.success) {
-        setCourses(prev => [res.data.course, ...prev]);
+        // server returns the updated base course; show updated view by reloading list
+        setCourses(prev => [res.data.course, ...prev.filter(c => c._id !== res.data.course._id)]);
         setShowCreateModal(false);
       }
     } catch (err) {
