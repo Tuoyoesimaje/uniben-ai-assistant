@@ -69,6 +69,8 @@ app.use('/api/navigation', require('./routes/navigationRoutes'));
 app.use('/api/quiz', require('./routes/quizRoutes'));
 app.use('/api/news', require('./routes/newsRoutes'));
 app.use('/api/fees', require('./routes/feesRoutes'));
+// Bursary informational fees catalog (public read, admin CRUD)
+app.use('/api/bursary/fees', require('./routes/bursaryFeesRoutes'));
 
 // 404 handler for API routes
 app.use('/api/*', (req, res) => {

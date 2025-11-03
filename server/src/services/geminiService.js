@@ -2,7 +2,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { queryDatabaseTool } = require('./databaseTool');
 const { recommendResourcesTool } = require('./resourceTool');
 const News = require('../models/News');
-const Fees = require('../models/Fees');
+const FeesCatalog = require('../models/FeesCatalog');
 
 // Only initialize Gemini AI if API key is available
 let genAI = null;
@@ -82,25 +82,21 @@ const tools = [
         }
       },
       {
-        name: 'getFinancialInfo',
-        description: 'Get financial information for a specific student (only accessible by the student themselves or bursary admin)',
+        name: 'getFeesCatalog',
+        description: 'Get the public fees catalog for a given level and session (general, non-personal). Use this for any fee lookup that is not student-specific.',
         parameters: {
           type: 'object',
           properties: {
-            studentId: {
+            level: {
               type: 'string',
-              description: 'Student ID to get financial information for'
+              description: "Level to look up (e.g. '100', '200')"
             },
-            requestingUserId: {
+            session: {
               type: 'string',
-              description: 'ID of the user making the request (for permission checking)'
-            },
-            requestingUserRole: {
-              type: 'string',
-              description: 'Role of the user making the request (for permission checking)'
+              description: "Academic session (e.g. '2025/2026')"
             }
           },
-          required: ['studentId', 'requestingUserId', 'requestingUserRole']
+          required: ['level', 'session']
         }
       }
     ]
@@ -204,9 +200,9 @@ When showing news:
 - Don't mention that content is filtered - just show what's relevant
 
 When showing financial information:
-- Be clear and helpful about fees, payments, and balances
-- Explain payment status in simple terms
-- Show payment history if available`;
+- Use the 'getFeesCatalog' tool to fetch non-personal, public fee catalogs by level and session
+- Do NOT access or request personal student payment records through the AI
+- Explain payment categories and totals clearly, and point users to bursary admin contact for personal payment enquiries`;
 
     // Format conversation history for Gemini API
     // Filter out any 'system' messages stored in conversation history because
@@ -272,8 +268,8 @@ When showing financial information:
           functionResponse = await recommendResourcesTool(call.args);
         } else if (call.name === 'getNews') {
           functionResponse = await getNewsTool(call.args);
-        } else if (call.name === 'getFinancialInfo') {
-          functionResponse = await getFinancialInfoTool(call.args);
+        } else if (call.name === 'getFeesCatalog') {
+          functionResponse = await getFeesCatalogTool(call.args);
         } else {
           functionResponse = { type: 'error', message: 'Unknown function call: ' + call.name };
         }
@@ -444,58 +440,41 @@ async function getNewsTool({ userId, userRole, departmentId, courseIds }) {
 
 async function getFinancialInfoTool({ studentId, requestingUserId, requestingUserRole }) {
   try {
-    // Permission check
-    const allowedRoles = ['system_admin', 'bursary_admin'];
-    const isOwner = requestingUserId === studentId;
-    const hasPermission = allowedRoles.includes(requestingUserRole) || (requestingUserRole === 'student' && isOwner);
-
-    if (!hasPermission) {
-      return {
-        type: 'error',
-        message: 'Access denied to financial information'
-      };
-    }
-
-    const fees = await Fees.findOne({ studentId })
-      .populate('studentId', 'name matricNumber')
-      .populate('paymentHistory.recordedBy', 'name role');
-
-    if (!fees) {
-      return {
-        type: 'error',
-        message: 'Financial record not found'
-      };
-    }
-
-    return {
-      type: 'financial_info',
-      student: {
-        name: fees.studentId.name,
-        matricNumber: fees.studentId.matricNumber
-      },
-      fees: {
-        totalFees: fees.totalFees,
-        amountPaid: fees.amountPaid,
-        balance: fees.balance,
-        paymentStatus: fees.paymentStatus,
-        semester: fees.semester,
-        session: fees.session,
-        lastUpdated: fees.lastUpdated,
-        paymentHistory: fees.paymentHistory.map(payment => ({
-          date: payment.date,
-          amount: payment.amount,
-          description: payment.description,
-          paymentMethod: payment.paymentMethod,
-          recordedBy: payment.recordedBy ? payment.recordedBy.name : 'System'
-        }))
-      }
-    };
-  } catch (error) {
-    console.error('getFinancialInfoTool error:', error);
+    // Use FeesCatalog for non-personal fee lookups
+    const { level, session } = { studentId: null, requestingUserId: null, requestingUserRole: null };
+    // (This function signature is unused now — keep for backward compatibility)
     return {
       type: 'error',
-      message: 'Failed to fetch financial information'
+      message: 'Personal financial queries are disabled. Use getFeesCatalog for public fee information.'
     };
+  } catch (error) {
+    console.error('getFinancialInfoTool error (deprecated):', error);
+    return { type: 'error', message: 'Failed to fetch financial information' };
+  }
+}
+
+async function getFeesCatalogTool({ level, session }) {
+  try {
+    if (!level || !session) {
+      return { type: 'error', message: 'level and session are required' };
+    }
+
+    const catalog = await FeesCatalog.findFor({ level, session });
+    if (!catalog) return { type: 'error', message: 'No catalog found for the requested level/session' };
+
+    return {
+      type: 'fees_catalog',
+      level: catalog.level,
+      session: catalog.session,
+      currency: catalog.currency,
+      effectiveFrom: catalog.effectiveFrom,
+      isNew: !!catalog.isNew,
+      items: catalog.items || [],
+      notes: catalog.notes || ''
+    };
+  } catch (error) {
+    console.error('getFeesCatalogTool error:', error);
+    return { type: 'error', message: 'Failed to fetch fees catalog' };
   }
 }
 
