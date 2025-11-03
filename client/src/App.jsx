@@ -4,7 +4,6 @@ import LoginPage from './components/auth/LoginPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import ChatPage from './components/chat/ChatPage';
 import MapPage from './pages/MapPage';
-import AdminPage from './pages/AdminPage';
 import NewsPage from './pages/NewsPage';
 import QuizUpload from './components/quiz/QuizUpload';
 import QuizStart from './components/quiz/QuizStart';
