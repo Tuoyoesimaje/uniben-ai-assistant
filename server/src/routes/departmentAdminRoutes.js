@@ -68,6 +68,13 @@ router.put('/courses/:id', async (req, res) => {
       // Default department to user's department if omitted
       const normalizedOfferings = (departments_offering || []).map(off => ({ ...off, department: off.department || user.department }));
 
+      // Debug: log incoming offerings shape for diagnostics
+      try {
+        console.log('[departmentAdmin] incoming departments_offering:', JSON.stringify(normalizedOfferings));
+      } catch (e) {
+        console.log('[departmentAdmin] incoming departments_offering (unstringifiable)');
+      }
+
       // Ensure offerings are for this department
       const invalidOfferings = normalizedOfferings.filter(offering =>
         (offering.department?.toString ? offering.department.toString() : String(offering.department)) !== (user.department?.toString ? user.department.toString() : String(user.department))

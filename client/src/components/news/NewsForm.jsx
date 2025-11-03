@@ -10,12 +10,14 @@ const NewsForm = ({ onClose, onSuccess, editingNews = null }) => {
     audience: 'everyone',
     department: '',
     course: '',
+    tags: '',
     priority: 'medium',
     expiresAt: '',
     attachments: []
   });
   const [departments, setDepartments] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [lecturerCourses, setLecturerCourses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -26,13 +28,15 @@ const NewsForm = ({ onClose, onSuccess, editingNews = null }) => {
         content: editingNews.content || '',
         audience: editingNews.audience || 'everyone',
         department: editingNews.department?.id || '',
-        course: editingNews.course?.id || '',
+        course: editingNews.courses ? editingNews.courses.map(c => c._id) : (editingNews.course?.id ? [editingNews.course.id] : ''),
+        tags: (editingNews.tags || []).join(', '),
         priority: editingNews.priority || 'medium',
         expiresAt: editingNews.expiresAt ? new Date(editingNews.expiresAt).toISOString().split('T')[0] : '',
         attachments: editingNews.attachments || []
       });
     }
     loadDepartmentsAndCourses();
+    if (user.role === 'lecturer_admin') loadLecturerCourses();
   }, [editingNews]);
 
   const loadDepartmentsAndCourses = async () => {
@@ -57,6 +61,18 @@ const NewsForm = ({ onClose, onSuccess, editingNews = null }) => {
       }
     } catch (error) {
       console.error('Error loading departments and courses:', error);
+    }
+  };
+
+  const loadLecturerCourses = async () => {
+    try {
+      const res = await fetch('/api/admin/lecturer/courses', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setLecturerCourses(data.success ? data.courses : []);
+      }
+    } catch (err) {
+      console.error('Failed to load lecturer courses', err);
     }
   };
 
@@ -115,7 +131,7 @@ const NewsForm = ({ onClose, onSuccess, editingNews = null }) => {
     }
 
     if (formData.audience === 'course_specific' && !formData.course) {
-      newErrors.course = 'Course is required for course-specific news';
+      newErrors.course = 'At least one course is required for course-specific news';
     }
 
     // Check permissions based on user role
@@ -127,8 +143,10 @@ const NewsForm = ({ onClose, onSuccess, editingNews = null }) => {
         break;
       case 'students_only':
       case 'staff_only':
-        if (!['system_admin', 'bursary_admin'].includes(user.role)) {
-          newErrors.audience = 'Only system admin and bursary admin can post to all students/staff';
+        // Allow system-wide students/staff (system_admin, bursary_admin)
+        // and allow departmental admins to target students/staff in their own department
+        if (!['system_admin', 'bursary_admin', 'departmental_admin'].includes(user.role)) {
+          newErrors.audience = 'Only system, bursary or departmental admins can post to students or staff';
         }
         break;
       case 'department_specific':
@@ -166,13 +184,31 @@ const NewsForm = ({ onClose, onSuccess, editingNews = null }) => {
 
       const method = editingNews ? 'PUT' : 'POST';
 
+      // Build payload: for departmental admins posting to students_only or staff_only
+      // ensure the department is set to their department so the server applies the scope correctly.
+      const payload = { ...formData };
+      if ((formData.audience === 'students_only' || formData.audience === 'staff_only') && user.role === 'departmental_admin') {
+        payload.department = user.department;
+      }
+
+      // For course_specific allow multiple courses (lecturer may post to many)
+      if (formData.audience === 'course_specific') {
+        payload.courses = Array.isArray(formData.course) ? formData.course : (formData.course ? [formData.course] : []);
+        delete payload.course;
+      }
+
+      // Include tags normalization (comma-separated string -> array)
+      if (typeof payload.tags === 'string') {
+        payload.tags = payload.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+      }
+
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
       const result = await response.json();
@@ -194,19 +230,26 @@ const NewsForm = ({ onClose, onSuccess, editingNews = null }) => {
   const getAvailableAudiences = () => {
     const audiences = [];
 
-    // Everyone can post to their own scope
+    // system and bursary admins can post university-wide
     if (['system_admin', 'bursary_admin'].includes(user.role)) {
       audiences.push({ value: 'everyone', label: 'Everyone (University-wide)' });
+    }
+
+    // Allow targeting students/staff either university-wide (system/bursary)
+    // or department-scoped (departmental_admin)
+    if (['system_admin', 'bursary_admin', 'departmental_admin'].includes(user.role)) {
       audiences.push({ value: 'students_only', label: 'Students Only' });
       audiences.push({ value: 'staff_only', label: 'Staff Only' });
     }
 
+    // Department-specific option (chooses a particular department)
     if (['system_admin', 'bursary_admin', 'departmental_admin'].includes(user.role)) {
       audiences.push({ value: 'department_specific', label: 'Specific Department' });
     }
 
+    // Course-specific option (for lecturers and higher roles). Lecturers can pick one or many of their classes.
     if (['system_admin', 'departmental_admin', 'lecturer_admin'].includes(user.role)) {
-      audiences.push({ value: 'course_specific', label: 'Specific Course' });
+      audiences.push({ value: 'course_specific', label: 'Specific Course(s)' });
     }
 
     return audiences;
@@ -314,28 +357,34 @@ const NewsForm = ({ onClose, onSuccess, editingNews = null }) => {
             </div>
           )}
 
-          {/* Course (conditional) */}
+          {/* Course (conditional) - allow multi-select for lecturers */}
           {formData.audience === 'course_specific' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Course *
-              </label>
-              <select
-                name="course"
-                value={formData.course}
-                onChange={handleInputChange}
-                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
-                  errors.course ? 'border-red-300' : 'border-gray-300'
-                }`}
-                required
-              >
-                <option value="">Select Course</option>
-                {courses.map(course => (
-                  <option key={course._id} value={course._id}>
-                    {course.code} - {course.title}
-                  </option>
-                ))}
-              </select>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Course(s) *</label>
+              {user.role === 'lecturer_admin' ? (
+                <div className="space-y-2 max-h-48 overflow-y-auto p-2 border rounded">
+                  {lecturerCourses.map(c => (
+                    <label key={c._id} className="flex items-center gap-2">
+                      <input type="checkbox" value={c._id} checked={(formData.course || []).includes(String(c._id))} onChange={(e) => {
+                        const val = e.target.value;
+                        setFormData(prev => {
+                          const set = new Set(prev.course || []);
+                          if (set.has(val)) set.delete(val); else set.add(val);
+                          return { ...prev, course: Array.from(set) };
+                        });
+                      }} />
+                      <span>{c.code} - {c.title}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <select name="course" value={formData.course} onChange={handleInputChange} className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${errors.course ? 'border-red-300' : 'border-gray-300'}`} required>
+                  <option value="">Select Course</option>
+                  {courses.map(course => (
+                    <option key={course._id} value={course._id}>{course.code} - {course.title}</option>
+                  ))}
+                </select>
+              )}
               {errors.course && <p className="text-red-500 text-sm mt-1">{errors.course}</p>}
             </div>
           )}
@@ -355,6 +404,12 @@ const NewsForm = ({ onClose, onSuccess, editingNews = null }) => {
               <option value="medium">Medium</option>
               <option value="high">High</option>
             </select>
+          </div>
+
+          {/* Tags */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Tags (optional, comma separated)</label>
+            <input name="tags" value={formData.tags || ''} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg" placeholder="e.g., exams,assignment,holiday" />
           </div>
 
           {/* Expiry Date */}

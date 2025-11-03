@@ -95,7 +95,7 @@ const NewsManagementTab = ({ user }) => {
       case 'students_only': return 'Students';
       case 'staff_only': return 'Staff';
       case 'department_specific': return department ? `Dept: ${department.name}` : 'Department';
-      case 'course_specific': return course ? `Course: ${course.code}` : 'Course';
+      case 'course_specific': return course && Array.isArray(course) && course.length > 0 ? `Courses: ${course.map(c => c.code).join(', ')}` : 'Course(s)';
       default: return 'General';
     }
   };

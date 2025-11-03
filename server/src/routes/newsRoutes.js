@@ -18,7 +18,9 @@ router.get('/', filterDataByRole('news'), async (req, res) => {
   try {
     const { userRole, userId, departmentId, courseIds } = req.filterOptions;
 
-    const news = await News.getNewsForUser(userId, userRole, departmentId, courseIds);
+    // Pass user tags for tag-based filtering
+    const userTags = req.user?.tags || [];
+    const news = await News.getNewsForUser(userId, userRole, departmentId, courseIds, userTags);
 
     res.json({
       success: true,
@@ -31,18 +33,14 @@ router.get('/', filterDataByRole('news'), async (req, res) => {
           role: item.authorId.role
         } : null,
         audience: item.audience,
-        department: item.department ? {
-          name: item.department.name
-        } : null,
-        course: item.course ? {
-          code: item.course.code,
-          title: item.course.title
-        } : null,
+        department: item.department ? { name: item.department.name } : null,
+        courses: item.courses ? item.courses.map(c => ({ code: c.code, title: c.title })) : [],
         priority: item.priority,
         expiresAt: item.expiresAt,
         attachments: item.attachments,
         createdAt: item.createdAt,
-        active: item.active
+        active: item.active,
+        tags: item.tags || []
       }))
     });
   } catch (error) {
@@ -57,7 +55,7 @@ router.get('/', filterDataByRole('news'), async (req, res) => {
 // Create news (role-based permissions)
 router.post('/', async (req, res) => {
   try {
-    const { title, content, audience, department, course } = req.body;
+  const { title, content, audience, department, course, tags } = req.body;
     const user = req.user;
 
     // Validate permissions based on audience type
@@ -74,14 +72,18 @@ router.post('/', async (req, res) => {
 
       case 'students_only':
       case 'staff_only':
-        // Only system admin and bursary admin can post to all students/staff
-        if (!['system_admin', 'bursary_admin'].includes(user.role)) {
-          return res.status(403).json({
-            success: false,
-            message: 'Only system admin and bursary admin can post to all students/staff'
-          });
+        // system/bursary can post to everyone; departmental_admins can post to their department's students/staff
+        if (['system_admin', 'bursary_admin'].includes(user.role)) {
+          break;
         }
-        break;
+        if (user.role === 'departmental_admin') {
+          // department must be either provided and match user's department or default to user's department
+          if (department && department !== user.department?.toString()) {
+            return res.status(403).json({ success: false, message: 'You can only post to your assigned department' });
+          }
+          break;
+        }
+        return res.status(403).json({ success: false, message: 'Only system, bursary or departmental admins can post to students or staff' });
 
       case 'department_specific':
         // Departmental admin can post to their department
@@ -101,22 +103,16 @@ router.post('/', async (req, res) => {
         break;
 
       case 'course_specific':
-        // Lecturer admin can post to their assigned courses
+        // Lecturer admin can post to their assigned courses (one or many). System and departmental admins can post to courses too.
         if (user.role === 'lecturer_admin') {
-          // Check if the course is assigned to this lecturer
           const Course = require('../models/Course');
-          const assignedCourse = await Course.findOne({ _id: course, lecturerId: user._id });
-          if (!assignedCourse) {
-            return res.status(403).json({
-              success: false,
-              message: 'You can only post to your assigned courses'
-            });
+          const courseIds = Array.isArray(course) ? course : [course];
+          const assigned = await Course.find({ _id: { $in: courseIds }, 'departments_offering.lecturerId': user._id }).select('_id');
+          if (!assigned || assigned.length !== courseIds.length) {
+            return res.status(403).json({ success: false, message: 'You can only post to courses you are assigned to' });
           }
-        } else if (!['system_admin', 'departmental_admin'].includes(user.role)) {
-          return res.status(403).json({
-            success: false,
-            message: 'Insufficient permissions to post course news'
-          });
+        } else if (!['system_admin', 'departmental_admin', 'bursary_admin'].includes(user.role)) {
+          return res.status(403).json({ success: false, message: 'Insufficient permissions to post course news' });
         }
         break;
 
@@ -133,14 +129,15 @@ router.post('/', async (req, res) => {
       authorId: user._id,
       audience,
       department: audience === 'department_specific' ? department : undefined,
-      course: audience === 'course_specific' ? course : undefined,
+      courses: audience === 'course_specific' ? (Array.isArray(course) ? course : [course]) : undefined,
+      tags: Array.isArray(tags) ? tags.map(t => String(t).toLowerCase().trim()) : (typeof tags === 'string' ? tags.split(',').map(t => t.toLowerCase().trim()) : []),
       priority: req.body.priority || 'medium',
       expiresAt: req.body.expiresAt,
       attachments: req.body.attachments || []
     });
 
-    await news.save();
-    await news.populate(['authorId', 'department', 'course']);
+  await news.save();
+  await news.populate(['authorId', 'department', 'courses']);
 
     res.status(201).json({
       success: true,
@@ -153,8 +150,9 @@ router.post('/', async (req, res) => {
           role: news.authorId.role
         },
         audience: news.audience,
-        department: news.department ? { name: news.department.name } : null,
-        course: news.course ? { code: news.course.code, title: news.course.title } : null,
+  department: news.department ? { name: news.department.name } : null,
+  courses: news.courses ? news.courses.map(c => ({ code: c.code, title: c.title })) : [],
+  tags: news.tags || [],
         priority: news.priority,
         expiresAt: news.expiresAt,
         attachments: news.attachments,
@@ -206,8 +204,8 @@ router.put('/:id', async (req, res) => {
     news.priority = priority || news.priority;
     news.expiresAt = expiresAt || news.expiresAt;
 
-    await news.save();
-    await news.populate(['authorId', 'department', 'course']);
+  await news.save();
+  await news.populate(['authorId', 'department', 'courses']);
 
     res.json({
       success: true,
@@ -220,8 +218,9 @@ router.put('/:id', async (req, res) => {
           role: news.authorId.role
         },
         audience: news.audience,
-        department: news.department ? { name: news.department.name } : null,
-        course: news.course ? { code: news.course.code, title: news.course.title } : null,
+  department: news.department ? { name: news.department.name } : null,
+  courses: news.courses ? news.courses.map(c => ({ code: c.code, title: c.title })) : [],
+  tags: news.tags || [],
         priority: news.priority,
         expiresAt: news.expiresAt,
         attachments: news.attachments,
@@ -313,13 +312,13 @@ router.get('/admin/all', async (req, res) => {
       case 'lecturer_admin':
         // Can see course news for their assigned courses and their own posts
         const Course = require('../models/Course');
-        const assignedCourses = await Course.find({ lecturerId: user._id }).select('_id');
+        const assignedCourses = await Course.find({ 'departments_offering.lecturerId': user._id }).select('_id');
         const courseIds = assignedCourses.map(c => c._id);
 
         query = {
           $or: [
             { authorId: user._id },
-            { audience: 'course_specific', course: { $in: courseIds } }
+            { audience: 'course_specific', courses: { $in: courseIds } }
           ]
         };
         break;

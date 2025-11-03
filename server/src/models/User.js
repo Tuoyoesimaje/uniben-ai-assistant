@@ -69,6 +69,13 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
+
+  ,
+  tags: [{
+    type: String,
+    trim: true,
+    lowercase: true
+  }]
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

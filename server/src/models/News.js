@@ -34,10 +34,10 @@ const newsSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Department'
   },
-  course: {
+  courses: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course'
-  },
+  }],
   active: {
     type: Boolean,
     default: true
@@ -97,7 +97,7 @@ const newsSchema = new mongoose.Schema({
 // Indexes for better query performance
 newsSchema.index({ audience: 1 });
 newsSchema.index({ department: 1 });
-newsSchema.index({ course: 1 });
+newsSchema.index({ courses: 1 });
 newsSchema.index({ active: 1 });
 newsSchema.index({ createdAt: -1 });
 newsSchema.index({ authorId: 1 });
@@ -115,7 +115,7 @@ newsSchema.virtual('authorInfo').get(async function() {
 });
 
 // Static method to get news for a specific user
-newsSchema.statics.getNewsForUser = function(userId, userRole, departmentId = null, courseIds = []) {
+newsSchema.statics.getNewsForUser = function(userId, userRole, departmentId = null, courseIds = [], userTags = []) {
   const query = { active: true };
 
   switch (userRole) {
@@ -139,7 +139,7 @@ newsSchema.statics.getNewsForUser = function(userId, userRole, departmentId = nu
         { audience: 'everyone' },
         { audience: 'staff_only' },
         { audience: 'department_specific', department: departmentId },
-        { audience: 'course_specific', course: { $in: courseIds } }
+        { audience: 'course_specific', courses: { $in: courseIds } }
       ];
       break;
 
@@ -158,7 +158,7 @@ newsSchema.statics.getNewsForUser = function(userId, userRole, departmentId = nu
         { audience: 'everyone' },
         { audience: 'students_only' },
         { audience: 'department_specific', department: departmentId },
-        { audience: 'course_specific', course: { $in: courseIds } }
+        { audience: 'course_specific', courses: { $in: courseIds } }
       ];
       break;
 
@@ -172,10 +172,17 @@ newsSchema.statics.getNewsForUser = function(userId, userRole, departmentId = nu
       query.audience = 'everyone';
   }
 
+  // Apply tag filtering: if userTags provided, allow items with empty tags or tags that intersect userTags
+  if (Array.isArray(userTags) && userTags.length > 0) {
+    const tagFilter = { $or: [ { tags: { $exists: false } }, { tags: { $size: 0 } }, { tags: { $in: userTags } } ] };
+    query.$and = query.$and || [];
+    query.$and.push(tagFilter);
+  }
+
   return this.find(query)
     .populate('authorId', 'name role')
     .populate('department', 'name')
-    .populate('course', 'code title')
+    .populate('courses', 'code title')
     .sort({ createdAt: -1 })
     .limit(50);
 };

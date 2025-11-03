@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../components/admin/AdminLayout';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import NewsManagementTab from '../components/news/NewsManagementTab';
 
 const emptyOfferingForm = {
   courseId: '',
   level: 100,
   lecturerId: '',
-  schedule: '',
+  scheduleDays: [],
+  scheduleTime: '',
   semester: 'both',
   venue: '',
   maxStudents: ''
@@ -20,6 +23,27 @@ const DepartmentAdminPage = () => {
   const [createForm, setCreateForm] = useState(emptyOfferingForm);
   const [editingCourse, setEditingCourse] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  // local UI state for per-page nav, search and pagination
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState('offerings');
+  const [searchTerms, setSearchTerms] = useState({ offerings: '' });
+  const [offeringsPage, setOfferingsPage] = useState(1);
+  const pageSize = 30;
+
+  const paginate = (arr, page) => {
+    if (!Array.isArray(arr)) return [];
+    const start = (page - 1) * pageSize;
+    return arr.slice(start, start + pageSize);
+  };
+
+  const filterBySearch = (arr, term, fields = []) => {
+    if (!term) return arr || [];
+    const q = term.toLowerCase();
+    return (arr || []).filter(item => fields.some(f => {
+      const val = f.split('.').reduce((o, k) => o?.[k], item);
+      return val && val.toString().toLowerCase().includes(q);
+    }));
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -53,17 +77,33 @@ const DepartmentAdminPage = () => {
     setCreateForm(prev => ({ ...prev, [name]: value }));
   };
 
+  const toggleCreateDay = (day) => {
+    setCreateForm(prev => {
+      const days = new Set(prev.scheduleDays || []);
+      if (days.has(day)) days.delete(day); else days.add(day);
+      return { ...prev, scheduleDays: Array.from(days) };
+    });
+  };
+
   const submitCreate = async (e) => {
     e.preventDefault();
     try {
       // departmental admin creates an offering by referencing a base course id
-      const { courseId, level, lecturerId, schedule, semester, venue, maxStudents } = createForm;
+      const { courseId, level, lecturerId, semester, venue, maxStudents } = createForm;
       if (!courseId) return alert('Base Course ID is required');
 
       // Use PUT to add a departments_offering to the base course. The server will
       // default the offering.department to the current admin's department if omitted.
-      const offering = { level: Number(level || 100), lecturerId: lecturerId || null, schedule: schedule || null, semester: semester || 'both', venue: venue || null, maxStudents: maxStudents ? Number(maxStudents) : undefined };
-  const res = await axios.put(`/api/admin/department/courses/${courseId}`, { departments_offering: [offering] });
+      const offering = {
+        level: Number(level || 100),
+        lecturerId: lecturerId || null,
+        schedule: { days: createForm.scheduleDays || [], time: createForm.scheduleTime || '' },
+        semester: semester || 'both',
+        venue: venue || null,
+        maxStudents: maxStudents ? Number(maxStudents) : undefined
+      };
+
+      const res = await axios.put(`/api/admin/department/courses/${courseId}`, { departments_offering: [offering] });
       if (res.data?.success) {
         // server returns the updated base course; show updated view by reloading list
         setCourses(prev => [res.data.course, ...prev.filter(c => c._id !== res.data.course._id)]);
@@ -76,7 +116,29 @@ const DepartmentAdminPage = () => {
   };
 
   const openEdit = (course) => {
-    setEditingCourse(course);
+    // Merge the department-specific offering into the editable object so
+    // departmental admins edit their offering (not the base course fields).
+    const offering = (course.departments_offering || []).find(o => {
+      // department may be stored as id or populated object
+      const deptId = o.department?._id || o.department;
+      return deptId === user.department;
+    });
+
+    const merged = {
+      ...course,
+      offeringId: offering?._id || null,
+      level: offering?.level || course.level || 100,
+      lecturerId: offering?.lecturerId?._id || offering?.lecturerId || '',
+      schedule: offering?.schedule || '',
+      scheduleDays: offering?.schedule?.days || [],
+      scheduleTime: offering?.schedule?.time || '',
+      semester: offering?.semester || 'both',
+      venue: offering?.venue || '',
+      maxStudents: offering?.maxStudents || '',
+      isActive: offering?.isActive !== undefined ? offering.isActive : true
+    };
+
+    setEditingCourse(merged);
     setShowEditModal(true);
   };
 
@@ -85,13 +147,35 @@ const DepartmentAdminPage = () => {
     setEditingCourse(prev => ({ ...prev, [name]: value }));
   };
 
+  const toggleEditDay = (day) => {
+    setEditingCourse(prev => {
+      const days = new Set(prev.scheduleDays || []);
+      if (days.has(day)) days.delete(day); else days.add(day);
+      return { ...prev, scheduleDays: Array.from(days) };
+    });
+  };
+
   const submitEdit = async (e) => {
     e.preventDefault();
     try {
       const body = { ...editingCourse };
       // Only send fields that the departmental admin is allowed to change for their offering
-      const allowed = (({ lecturerId, schedule, semester, venue, maxStudents, isActive, departments_offering }) => ({ lecturerId, schedule, semester, venue, maxStudents, isActive, departments_offering }))(body);
-      const res = await axios.put(`/api/admin/courses/${editingCourse._id}`, allowed);
+      const allowedFields = (({ lecturerId, schedule, semester, venue, maxStudents, isActive }) => ({ lecturerId, schedule, semester, venue, maxStudents, isActive }))(body);
+
+      // For departmental edits, prefer to send a departments_offering array so the server
+      // updates the department-specific offering (not the base course document).
+      const departments_offering = [{
+        department: user.department,
+        level: body.level || 100,
+        lecturerId: allowedFields.lecturerId || null,
+  schedule: { days: body.scheduleDays || [], time: body.scheduleTime || '' },
+        semester: allowedFields.semester || 'both',
+        venue: allowedFields.venue || null,
+        maxStudents: allowedFields.maxStudents,
+        isActive: allowedFields.isActive
+      }];
+
+      const res = await axios.put(`/api/admin/department/courses/${editingCourse._id}`, { departments_offering });
       if (res.data?.success) {
         setCourses(prev => prev.map(c => c._id === res.data.course._id ? res.data.course : c));
         setShowEditModal(false);
@@ -106,7 +190,7 @@ const DepartmentAdminPage = () => {
   const deleteCourse = async (id) => {
     if (!confirm('Delete this course/offering?')) return;
     try {
-      const res = await axios.delete(`/api/admin/courses/${id}`);
+      const res = await axios.delete(`/api/admin/department/courses/${id}`);
       if (res.data?.success) setCourses(prev => prev.filter(c => c._id !== id));
     } catch (err) {
       console.error('Delete offering failed', err);
@@ -116,47 +200,127 @@ const DepartmentAdminPage = () => {
 
   return (
     <AdminLayout title="Department Administration">
-      <div className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Department Offerings</h2>
-          <div>
-            <button className="btn-primary" onClick={openCreate}>Create Offering</button>
+      <div className="md:flex md:gap-6">
+        <aside className="hidden md:block md:w-64">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow p-4 border">
+            <h3 className="text-sm font-semibold mb-3">Department Admin</h3>
+            <nav className="space-y-1">
+              <button onClick={() => setActiveTab('offerings')} className={`w-full text-left px-3 py-2 rounded ${activeTab==='offerings'?'bg-emerald-600 text-white':'text-slate-700 hover:bg-emerald-50'}`}>Offerings</button>
+              <button onClick={() => setActiveTab('news')} className={`w-full text-left px-3 py-2 rounded ${activeTab==='news'?'bg-emerald-600 text-white':'text-slate-700 hover:bg-emerald-50'}`}>News</button>
+            </nav>
+          </div>
+        </aside>
+
+        <div className="flex-1">
+          <div className="md:hidden mb-4">
+            <div className="flex gap-2 overflow-x-auto">
+              {['offerings'].map(tab => (
+                <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-shrink-0 px-3 py-2 rounded ${activeTab===tab? 'bg-emerald-600 text-white':'bg-white/90 text-slate-700'}`}>
+                  {tab[0].toUpperCase()+tab.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow p-4 border mb-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <h1 className="text-2xl font-bold text-[#0f172a]">Department Administration</h1>
+                <p className="text-sm text-slate-600">Manage departmental course offerings.</p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  placeholder={`Search ${activeTab}`}
+                  className="input w-60"
+                  value={searchTerms.offerings}
+                  onChange={(e) => setSearchTerms(prev => ({ ...prev, offerings: e.target.value }))}
+                />
+                <button className="btn-primary" onClick={openCreate}>Create Offering</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow p-4 border">
+            {activeTab === 'offerings' && (
+              <div>
+                <h2 className="font-semibold mb-3">Offerings</h2>
+                {loading ? (
+                  <p className="text-slate-600">Loading...</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-left">
+                      <thead>
+                        <tr>
+                          <th className="px-3 py-2">Code</th>
+                          <th className="px-3 py-2">Title</th>
+                          <th className="px-3 py-2">Level</th>
+                          <th className="px-3 py-2">Lecturer</th>
+                          <th className="px-3 py-2">Semester</th>
+                          <th className="px-3 py-2">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginate(filterBySearch(courses, searchTerms.offerings, ['code','title','department.name']), offeringsPage).map(c => {
+                          // prefer the offering that belongs to current user's department
+                          const offering = (c.departments_offering || []).find(o => {
+                            const deptId = o.department?._id || o.department;
+                            return String(deptId) === String(user.department);
+                          });
+                          // Resolve lecturer name: prefer populated offering.lecturerId.name,
+                          // otherwise lookup in the loaded `lecturers` list by id,
+                          // otherwise fall back to base course lecturer or '-'.
+                          let lecturerName = '-';
+                          if (offering?.lecturerId) {
+                            if (typeof offering.lecturerId === 'object' && offering.lecturerId.name) {
+                              lecturerName = offering.lecturerId.name;
+                            } else {
+                              // lecturerId may be an ObjectId string - try to find in lecturers state
+                              const found = lecturers.find(l => String(l._id) === String(offering.lecturerId));
+                              if (found) lecturerName = found.name;
+                            }
+                          } else if (c.lecturer?.name) {
+                            lecturerName = c.lecturer.name;
+                          }
+                          const displayLevel = offering?.level || c.level;
+                          const displaySemester = offering?.semester || c.semester;
+                          return (
+                            <tr key={c._id} className="border-t">
+                              <td className="px-3 py-2">{c.code}</td>
+                              <td className="px-3 py-2">{c.title}</td>
+                              <td className="px-3 py-2">{displayLevel}</td>
+                              <td className="px-3 py-2">{lecturerName}</td>
+                              <td className="px-3 py-2">{displaySemester}</td>
+                              <td className="px-3 py-2">
+                                <button onClick={() => openEdit(c)} className="mr-2 text-blue-600 hover:underline">Edit</button>
+                                <button onClick={() => deleteCourse(c._id)} className="text-red-600 hover:underline">Delete</button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* pagination */}
+                {filterBySearch(courses, searchTerms.offerings, ['code','title','department.name']).length > pageSize && (
+                  <div className="mt-3 flex justify-end items-center gap-2">
+                    <button onClick={() => setOfferingsPage(Math.max(1, offeringsPage-1))} className="px-3 py-1 border rounded">Prev</button>
+                    <div className="text-sm">Page {offeringsPage} of {Math.ceil(filterBySearch(courses, searchTerms.offerings, ['code','title','department.name']).length / pageSize)}</div>
+                    <button onClick={() => setOfferingsPage(Math.min(Math.ceil(filterBySearch(courses, searchTerms.offerings, ['code','title','department.name']).length / pageSize), offeringsPage+1))} className="px-3 py-1 border rounded">Next</button>
+                  </div>
+                )}
+              </div>
+            )}
+            {activeTab === 'news' && (
+              <div>
+                <NewsManagementTab user={user} />
+              </div>
+            )}
           </div>
         </div>
-
-        {loading ? (
-          <p className="text-slate-600">Loading...</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left">
-              <thead>
-                <tr>
-                  <th className="px-3 py-2">Code</th>
-                  <th className="px-3 py-2">Title</th>
-                  <th className="px-3 py-2">Level</th>
-                  <th className="px-3 py-2">Lecturer</th>
-                  <th className="px-3 py-2">Semester</th>
-                  <th className="px-3 py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {courses.map(c => (
-                  <tr key={c._id} className="border-t">
-                    <td className="px-3 py-2">{c.code}</td>
-                    <td className="px-3 py-2">{c.title}</td>
-                    <td className="px-3 py-2">{c.level}</td>
-                    <td className="px-3 py-2">{c.lecturerId?.name ?? c.lecturer?.name ?? '-'}</td>
-                    <td className="px-3 py-2">{c.semester}</td>
-                    <td className="px-3 py-2">
-                      <button onClick={() => openEdit(c)} className="mr-2 text-blue-600 hover:underline">Edit</button>
-                      <button onClick={() => deleteCourse(c._id)} className="text-red-600 hover:underline">Delete</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      </div>
 
         {/* Create offering modal */}
         {showCreateModal && (
@@ -173,7 +337,20 @@ const DepartmentAdminPage = () => {
                       <option key={l._id} value={l._id}>{l.name} {l.staffId ? `(${l.staffId})` : ''}</option>
                     ))}
                   </select>
-                  <input name="schedule" value={createForm.schedule} onChange={handleCreateChange} placeholder="Schedule (optional)" className="input" />
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Days of Week</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d => (
+                        <label key={d} className={`px-2 py-1 border rounded ${createForm.scheduleDays?.includes(d)?'bg-emerald-100 border-emerald-300':''}`}>
+                          <input type="checkbox" className="mr-2" checked={createForm.scheduleDays?.includes(d)} onChange={() => toggleCreateDay(d)} />{d}
+                        </label>
+                      ))}
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Time</label>
+                      <input name="scheduleTime" type="time" value={createForm.scheduleTime || ''} onChange={handleCreateChange} className="input" />
+                    </div>
+                  </div>
                   <select name="semester" value={createForm.semester} onChange={handleCreateChange} className="input">
                     <option value="both">Both</option>
                     <option value="first">First</option>
@@ -198,13 +375,26 @@ const DepartmentAdminPage = () => {
               <h3 className="text-lg font-semibold mb-4">Edit Offering - {editingCourse.code}</h3>
               <form onSubmit={submitEdit}>
                 <div className="grid grid-cols-1 gap-3">
-                  <select name="lecturerId" value={editingCourse.lecturerId || (editingCourse.lecturerId?._id) || ''} onChange={handleEditChange} className="input">
+                  <select name="lecturerId" value={editingCourse.lecturerId || ''} onChange={handleEditChange} className="input">
                     <option value="">(unassigned)</option>
                     {lecturers.map(l => (
-                      <option key={l._1d} value={l._id}>{l.name} {l.staffId ? `(${l.staffId})` : ''}</option>
+                      <option key={l._id} value={l._id}>{l.name} {l.staffId ? `(${l.staffId})` : ''}</option>
                     ))}
                   </select>
-                  <input name="schedule" value={editingCourse.schedule || ''} onChange={handleEditChange} placeholder="Schedule" className="input" />
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Days of Week</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d => (
+                        <label key={d} className={`px-2 py-1 border rounded ${editingCourse.scheduleDays?.includes(d)?'bg-emerald-100 border-emerald-300':''}`}>
+                          <input type="checkbox" className="mr-2" checked={editingCourse.scheduleDays?.includes(d)} onChange={() => toggleEditDay(d)} />{d}
+                        </label>
+                      ))}
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Time</label>
+                      <input name="scheduleTime" type="time" value={editingCourse.scheduleTime || ''} onChange={handleEditChange} className="input" />
+                    </div>
+                  </div>
                   <select name="semester" value={editingCourse.semester || 'both'} onChange={handleEditChange} className="input">
                     <option value="both">Both</option>
                     <option value="first">First</option>
@@ -222,7 +412,6 @@ const DepartmentAdminPage = () => {
             </div>
           </div>
         )}
-      </div>
     </AdminLayout>
   );
 };

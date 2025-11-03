@@ -44,13 +44,18 @@ const courseSchema = new mongoose.Schema({
       ref: 'User'
     },
     schedule: {
-      type: String,
-      trim: true
+      // Schedule for department offering stored as an object with days + time
+      days: [{ type: String, trim: true }],
+      time: { type: String, trim: true }
     },
     semester: {
       type: String,
       enum: ['first', 'second', 'both'],
       default: 'both'
+    },
+    maxStudents: {
+      type: Number,
+      min: [1, 'Maximum students must be at least 1']
     },
     // Who assigned/approved this offering (department admin)
     assignedBy: {
