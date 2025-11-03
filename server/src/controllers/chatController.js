@@ -14,10 +14,25 @@ exports.sendMessage = async (req, res) => {
 
     const history = conversation?.messages || [];
 
+    // Log incoming request for debugging
+    console.debug('Chat request:', {
+      userId,
+      role: req.user?.role,
+      conversationId,
+      message
+    });
+
     // Call Gemini
     const result = await chat(message, history);
 
-    // Save conversation - handle guest users differently
+    // Log raw AI service result for debugging
+    try {
+      console.debug('Raw AI result (type=' + typeof result + '):', JSON.stringify(result, null, 2));
+    } catch (e) {
+      console.debug('Raw AI result could not be stringified, type:', typeof result, 'value:', result);
+    }
+
+  // Save conversation - handle guest users differently
     if (!conversation) {
       if (req.user.role === 'guest') {
         // For guests, don't save to database, just return response
@@ -43,7 +58,8 @@ exports.sendMessage = async (req, res) => {
       return res.json({
         success: true,
         conversationId: null,
-        message: result.text,
+        // Ensure we never return an empty string to the client
+        message: result && result.text && result.text.trim() ? result.text.trim() : 'Sorry, I could not generate a response right now.',
         hasLocation: result.functionCalls?.some(
           call => call.name === 'queryDatabase' && call.args.queryType === 'building'
         ),
@@ -55,8 +71,10 @@ exports.sendMessage = async (req, res) => {
     if (message && message.trim()) {
       conversation.messages.push({ role: 'user', content: message.trim() });
     }
-    if (result.text && result.text.trim()) {
-      conversation.messages.push({ role: 'assistant', content: result.text.trim() });
+    // Ensure assistant message has content; if empty, provide a friendly fallback
+    const assistantText = result && result.text && result.text.trim() ? result.text.trim() : 'Sorry, I could not generate a response right now.';
+    if (assistantText) {
+      conversation.messages.push({ role: 'assistant', content: assistantText });
     }
 
     await conversation.save();
@@ -69,7 +87,7 @@ exports.sendMessage = async (req, res) => {
     res.json({
       success: true,
       conversationId: conversation._id,
-      message: result.text,
+      message: assistantText,
       hasLocation,
       functionCalls: result.functionCalls
     });

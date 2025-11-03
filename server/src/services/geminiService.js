@@ -164,7 +164,7 @@ async function callGeminiAPI(userMessage, conversationHistory = []) {
 
   try {
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       tools
     });
 
@@ -209,49 +209,136 @@ When showing financial information:
 - Show payment history if available`;
 
     // Format conversation history for Gemini API
-    const formattedHistory = conversationHistory.map(msg => ({
+    // Filter out any 'system' messages stored in conversation history because
+    // the GoogleGenerativeAI SDK requires the first content to be a user message.
+    const filteredHistory = (conversationHistory || []).filter(m => m.role !== 'system');
+    const formattedHistory = filteredHistory.map(msg => ({
       role: msg.role === 'assistant' ? 'model' : msg.role,
       parts: [{ text: msg.content }]
     }));
 
-    const chat = model.startChat({
-      history: formattedHistory
-    });
+    // NOTE: Do not prepend a system message at the start of history —
+    // the GoogleGenerativeAI SDK requires the first content to be a user message.
+    // We'll pass systemInstruction via the model configuration where supported
+    // or rely on short instructions sent as part of the user message when needed.
+    const chat = model.startChat({ history: formattedHistory });
 
     let result = await chat.sendMessage(userMessage);
+    console.debug('Raw sendMessage result:', result);
     let response = result.response;
     let functionCalls = [];
 
-    // Handle function calling
-    while (response.functionCalls && response.functionCalls.length > 0) {
-      const call = response.functionCalls[0];
-      functionCalls.push(call);
-
-      let functionResponse;
-
-      if (call.name === 'queryDatabase') {
-        functionResponse = await queryDatabaseTool(call.args);
-      } else if (call.name === 'recommendResources') {
-        functionResponse = await recommendResourcesTool(call.args);
-      } else if (call.name === 'getNews') {
-        functionResponse = await getNewsTool(call.args);
-      } else if (call.name === 'getFinancialInfo') {
-        functionResponse = await getFinancialInfoTool(call.args);
-      }
-
-      // Send function response back to model
-      result = await chat.sendMessage([{
-        functionResponse: {
-          name: call.name,
-          response: functionResponse
+    // Helper to normalize function calls (SDK may expose as functions)
+    const getFunctionCallsArray = (resp) => {
+      try {
+        if (!resp) return [];
+        if (typeof resp.functionCalls === 'function') return resp.functionCalls() || [];
+        if (Array.isArray(resp.functionCalls)) return resp.functionCalls;
+        if (typeof resp.functionCall === 'function') {
+          const single = resp.functionCall();
+          return single ? [single] : [];
         }
-      }]);
+        return [];
+      } catch (err) {
+        console.debug('Could not normalize functionCalls:', err);
+        return [];
+      }
+    };
 
-      response = result.response;
+    try {
+      // Try to log response text if available
+      if (response && typeof response.text === 'function') {
+        console.debug('Initial response text preview:', response.text?.().slice(0, 200));
+      } else if (response && response.text) {
+        console.debug('Initial response.text value:', String(response.text).slice(0, 200));
+      }
+    } catch (logErr) {
+      console.debug('Could not read response text:', logErr);
     }
 
+    // Handle function calling (normalize SDK shape first)
+    let pendingFunctionCalls = getFunctionCallsArray(response);
+    while (pendingFunctionCalls && pendingFunctionCalls.length > 0) {
+      const call = pendingFunctionCalls[0];
+      functionCalls.push({ name: call.name, args: call.args });
+      console.debug('Processing function call from model:', call.name, 'args:', call.args);
+
+      let functionResponse;
+      try {
+        if (call.name === 'queryDatabase') {
+          functionResponse = await queryDatabaseTool(call.args);
+        } else if (call.name === 'recommendResources') {
+          functionResponse = await recommendResourcesTool(call.args);
+        } else if (call.name === 'getNews') {
+          functionResponse = await getNewsTool(call.args);
+        } else if (call.name === 'getFinancialInfo') {
+          functionResponse = await getFinancialInfoTool(call.args);
+        } else {
+          functionResponse = { type: 'error', message: 'Unknown function call: ' + call.name };
+        }
+      } catch (toolErr) {
+        console.error('Tool execution error for', call.name, toolErr);
+        functionResponse = { type: 'error', message: 'Tool execution failed' };
+      }
+
+      // Send function response back to model.
+      // The SDK expects an iterable (array) of new content items. Wrap the function
+      // response in an array. The 'response' MUST be a structured object (protobuf Struct)
+      // so we should pass a plain JS object rather than a JSON string. If the tool
+      // returned a primitive or string, wrap it in an object under `value`.
+      let functionResponseObj;
+      if (functionResponse && typeof functionResponse === 'object') {
+        functionResponseObj = functionResponse;
+      } else if (typeof functionResponse === 'string') {
+        // Try to parse JSON strings back into objects if possible
+        try {
+          functionResponseObj = JSON.parse(functionResponse);
+        } catch (e) {
+          functionResponseObj = { value: functionResponse };
+        }
+      } else {
+        functionResponseObj = { value: String(functionResponse) };
+      }
+
+      const payloadArray = [
+        {
+          functionResponse: {
+            name: call.name,
+            response: functionResponseObj
+          }
+        }
+      ];
+
+      console.debug('Sending function response back to model for', call.name, { payloadArray });
+      result = await chat.sendMessage(payloadArray);
+      console.debug('Result after function response:', result);
+      response = result.response;
+
+      // Recompute pending calls (in case model chains multiple function calls)
+      pendingFunctionCalls = getFunctionCallsArray(response);
+    }
+
+    // Safely extract text
+    let text = '';
+    try {
+      text = response && typeof response.text === 'function' ? response.text() : (response?.text || '');
+    } catch (ex) {
+      console.error('Failed to extract response.text():', ex);
+      text = '';
+    }
+
+    console.debug('Final AI response text preview:', String(text).slice(0, 500));
+
+    // If the model never produced text but did function calls, include those and attempt to summarize
     return {
-      text: response.text(),
+      text,
+      functionCalls,
+      conversationHistory: await chat.getHistory()
+    };
+    console.debug('Final AI response text preview:', String(text).slice(0, 500));
+
+    return {
+      text,
       functionCalls,
       conversationHistory: await chat.getHistory()
     };
@@ -259,6 +346,7 @@ When showing financial information:
     console.error('Gemini API Error:', error);
     
     // Provide more specific error messages
+    console.error('Gemini API caught error details:', { message: error.message, stack: error.stack });
     if (error.message && error.message.includes('API key not valid')) {
       console.error('The Gemini API key is invalid or not set properly');
       throw new Error('AI service is temporarily unavailable. Please contact administrator to configure the API key.');

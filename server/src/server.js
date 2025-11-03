@@ -62,6 +62,8 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
+// Debug routes (development only)
+app.use('/api/debug', require('./routes/debugRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/navigation', require('./routes/navigationRoutes'));
 app.use('/api/quiz', require('./routes/quizRoutes'));

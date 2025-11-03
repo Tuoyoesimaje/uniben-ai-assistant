@@ -324,56 +324,83 @@ router.post('/courses', async (req, res) => {
       });
     }
 
-    // Normalize departments_offering: allow array of department IDs (legacy) or objects
-    if (Array.isArray(req.body.departments_offering) && req.body.departments_offering.length > 0) {
-      const normalized = req.body.departments_offering.map(item => {
+    // Create a working copy of the request body to avoid modifying the original
+    const courseData = { ...req.body };
+
+    // Handle departments_offering: normalize to proper object format
+    if (Array.isArray(courseData.departments_offering) && courseData.departments_offering.length > 0) {
+      const normalized = courseData.departments_offering.map(item => {
         if (!item) return null;
         if (typeof item === 'string' || typeof item === 'number') {
-          return { department: item };
+          // Default level for department offerings if not specified
+          return {
+            department: item,
+            level: 100,
+            isActive: true
+          };
         }
-        // already an object - keep only known fields
         return {
           department: item.department || item.departmentId || null,
-          level: item.level || null,
+          level: item.level || 100,
           lecturerId: item.lecturerId || item.lecturer || null,
           schedule: item.schedule || null,
           semester: item.semester || 'both',
           isActive: item.isActive !== undefined ? item.isActive : true
         };
       }).filter(Boolean);
-      req.body.departments_offering = normalized;
+      courseData.departments_offering = normalized;
     }
 
-    // If no owning department provided but department offerings exist,
-    // use the first offering's department as the owning department to satisfy model requirement.
-    if (!req.body.department && Array.isArray(req.body.departments_offering) && req.body.departments_offering.length > 0) {
-      const firstOffering = req.body.departments_offering[0];
+    // Set department from first offering if not provided
+    if (!courseData.department && Array.isArray(courseData.departments_offering) && courseData.departments_offering.length > 0) {
+      const firstOffering = courseData.departments_offering[0];
       if (firstOffering && firstOffering.department) {
-        req.body.department = firstOffering.department;
+        courseData.department = firstOffering.department;
       }
     }
 
-    // Ensure numeric fields are numbers
-    if (req.body.credit) req.body.credit = Number(req.body.credit);
-    if (req.body.level) req.body.level = Number(req.body.level);
+    // Convert string numbers to actual numbers
+    if (courseData.credit) courseData.credit = Number(courseData.credit);
+    if (courseData.level) courseData.level = Number(courseData.level);
 
-    // Provide sensible defaults so system admin can create global course templates without specifying a level
-    if (!req.body.level) {
-      // try to derive from first offering
-      const firstOfferingLevel = req.body.departments_offering && req.body.departments_offering[0] && req.body.departments_offering[0].level;
-      req.body.level = firstOfferingLevel ? Number(firstOfferingLevel) : 100; // default to 100
+    // Handle prerequisites and corequisites (ensure they are arrays of strings)
+    if (typeof courseData.prerequisites === 'string') {
+      courseData.prerequisites = courseData.prerequisites.split(',').map(p => p.trim()).filter(p => p);
+    }
+    if (typeof courseData.corequisites === 'string') {
+      courseData.corequisites = courseData.corequisites.split(',').map(c => c.trim()).filter(c => c);
     }
 
-    if (!req.body.department) {
-      return res.status(400).json({ success: false, message: 'Owning department is required (provide department or departments_offering)' });
+    // Set default level if not provided
+    if (!courseData.level) {
+      courseData.level = 100;
     }
 
-    const course = new Course(req.body);
+    // Validate required fields
+    if (!courseData.department) {
+      return res.status(400).json({
+        success: false,
+        message: 'Department is required. Please select a department that will offer this course.'
+      });
+    }
+
+    if (!courseData.credit || courseData.credit < 1 || courseData.credit > 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Credit hours must be between 1 and 6.'
+      });
+    }
+
+    console.log('Processing course data:', JSON.stringify(courseData, null, 2));
+
+    const course = new Course(courseData);
     await course.save();
     await course.populate(['department', 'departments_offering.department', 'departments_offering.lecturerId', 'prerequisites']);
+    
     res.status(201).json({ success: true, course });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('Course creation error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 });
 
