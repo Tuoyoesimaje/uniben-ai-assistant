@@ -75,6 +75,31 @@ exports.sendMessage = async (req, res) => {
     });
   } catch (error) {
     console.error('Chat error:', error);
-    res.status(500).json({ success: false, message: 'Failed to process message' });
+    
+    // Log detailed error information for debugging
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+      userId: req.user?.id,
+      role: req.user?.role
+    });
+    
+    // Provide user-friendly error messages based on error type
+    let userMessage = 'Sorry, I encountered an error. Please try again.';
+    
+    if (error.message && error.message.includes('API key')) {
+      userMessage = 'AI service is temporarily unavailable. Please contact administrator to configure the API key.';
+    } else if (error.message && error.message.includes('quota')) {
+      userMessage = 'AI service is busy. Please try again in a moment.';
+    } else if (error.message && error.message.includes('database')) {
+      userMessage = 'Database connection issue. Please try again later.';
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: userMessage,
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };

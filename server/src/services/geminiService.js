@@ -4,7 +4,11 @@ const { recommendResourcesTool } = require('./resourceTool');
 const News = require('../models/News');
 const Fees = require('../models/Fees');
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Only initialize Gemini AI if API key is available
+let genAI = null;
+if (process.env.GEMINI_API_KEY) {
+  genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+}
 
 // Define function calling tools
 const tools = [
@@ -103,11 +107,64 @@ const tools = [
   }
 ];
 
-// Main chat function
-async function chat(userMessage, conversationHistory = []) {
+// Fallback function for when AI service fails
+function getFallbackResponse(userMessage) {
+  const message = userMessage.toLowerCase();
+  
+  // Basic keyword-based responses
+  if (message.includes('library') || message.includes('book')) {
+    return {
+      text: "📚 The main University Library is located in the Academic Block. You can navigate there using our campus map. Would you like me to show you the building location?",
+      functionCalls: [{
+        name: 'queryDatabase',
+        args: { queryType: 'building', searchTerm: 'library' }
+      }],
+      conversationHistory: []
+    };
+  }
+  
+  if (message.includes('building') || message.includes('location') || message.includes('where')) {
+    return {
+      text: "🏢 I can help you find buildings on campus! Which building are you looking for? Please tell me the name or department, and I'll locate it for you.",
+      functionCalls: [],
+      conversationHistory: []
+    };
+  }
+  
+  if (message.includes('course') || message.includes('class')) {
+    return {
+      text: "📖 I can help you with course information! You can ask me about course codes, descriptions, or requirements. For the best learning experience, try asking about specific courses you'd like to know more about.",
+      functionCalls: [],
+      conversationHistory: []
+    };
+  }
+  
+  if (message.includes('help') || message.includes('hello') || message.includes('hi')) {
+    return {
+      text: "👋 Hello! I'm the UNIBEN AI Assistant. I can help you with:\n\n🏢 Finding buildings and campus locations\n📖 Course information and resources\n📰 University news and announcements\n🧪 Creating and taking quizzes\n\nWhat would you like to know?",
+      functionCalls: [],
+      conversationHistory: []
+    };
+  }
+  
+  // Default fallback
+  return {
+    text: "I'm here to help! You can ask me about:\n\n• Buildings and campus locations\n• Course information\n• University news and announcements\n• Quiz creation and navigation\n\nWhat would you like to explore today?",
+    functionCalls: [],
+    conversationHistory: []
+  };
+}
+
+// Main AI chat function
+async function callGeminiAPI(userMessage, conversationHistory = []) {
+  // Check if API key is available
+  if (!genAI) {
+    throw new Error('Gemini API key is not configured');
+  }
+
   try {
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       tools
     });
 
@@ -200,7 +257,28 @@ When showing financial information:
     };
   } catch (error) {
     console.error('Gemini API Error:', error);
-    throw new Error('Failed to process chat message');
+    
+    // Provide more specific error messages
+    if (error.message && error.message.includes('API key not valid')) {
+      console.error('The Gemini API key is invalid or not set properly');
+      throw new Error('AI service is temporarily unavailable. Please contact administrator to configure the API key.');
+    }
+    
+    if (error.message && error.message.includes('quota')) {
+      throw new Error('AI service is busy. Please try again in a moment.');
+    }
+    
+    throw new Error('Failed to process chat message. Please try again.');
+  }
+}
+
+// Main chat function with fallback
+async function chat(userMessage, conversationHistory = []) {
+  try {
+    return await callGeminiAPI(userMessage, conversationHistory);
+  } catch (error) {
+    console.error('AI service failed, using fallback:', error.message);
+    return getFallbackResponse(userMessage);
   }
 }
 
@@ -289,4 +367,7 @@ async function getFinancialInfoTool({ studentId, requestingUserId, requestingUse
   }
 }
 
-module.exports = { chat };
+module.exports = { 
+  chat,
+  getFallbackResponse
+};
