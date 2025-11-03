@@ -260,11 +260,12 @@ When showing financial information:
     let pendingFunctionCalls = getFunctionCallsArray(response);
     while (pendingFunctionCalls && pendingFunctionCalls.length > 0) {
       const call = pendingFunctionCalls[0];
+      // Store call entry - we will add the tool response once executed
       functionCalls.push({ name: call.name, args: call.args });
       console.debug('Processing function call from model:', call.name, 'args:', call.args);
 
       let functionResponse;
-      try {
+  try {
         if (call.name === 'queryDatabase') {
           functionResponse = await queryDatabaseTool(call.args);
         } else if (call.name === 'recommendResources') {
@@ -281,7 +282,7 @@ When showing financial information:
         functionResponse = { type: 'error', message: 'Tool execution failed' };
       }
 
-      // Send function response back to model.
+  // Send function response back to model.
       // The SDK expects an iterable (array) of new content items. Wrap the function
       // response in an array. The 'response' MUST be a structured object (protobuf Struct)
       // so we should pass a plain JS object rather than a JSON string. If the tool
@@ -311,6 +312,14 @@ When showing financial information:
 
       console.debug('Sending function response back to model for', call.name, { payloadArray });
       result = await chat.sendMessage(payloadArray);
+
+      // Attach the executed tool response to the functionCalls entry so we can
+      // build a fallback summary if the model does not return text.
+      try {
+        functionCalls[functionCalls.length - 1].response = functionResponseObj;
+      } catch (attachErr) {
+        console.debug('Failed to attach function response to log entry:', attachErr);
+      }
       console.debug('Result after function response:', result);
       response = result.response;
 
@@ -329,7 +338,42 @@ When showing financial information:
 
     console.debug('Final AI response text preview:', String(text).slice(0, 500));
 
-    // If the model never produced text but did function calls, include those and attempt to summarize
+    // If the model never produced text but did function calls, synthesize a concise
+    // assistant response from the first function call's tool output so the UI
+    // never displays an empty bubble.
+    if ((!text || !String(text).trim()) && functionCalls && functionCalls.length > 0) {
+      try {
+        const first = functionCalls[0];
+        const resp = first.response || {};
+
+        // Simple heuristics per tool
+        if (first.name === 'queryDatabase' && resp.type === 'department' && Array.isArray(resp.results)) {
+          if (resp.results.length === 0) {
+            text = `I couldn't find a match for that department.`;
+          } else {
+            const d = resp.results[0];
+            text = `Yes — ${d.name} is in the ${d.faculty || 'the university'}.`;
+            if (d.hodName) text += ` Head of Department: ${d.hodName}.`;
+            if (d.location) text += ` Location: ${d.location}.`;
+          }
+        } else if (first.name === 'recommendResources' && resp.type === 'resources' && Array.isArray(resp.items)) {
+          const items = resp.items.slice(0, 3).map(i => `• ${i.title || i.name}${i.url ? ` — ${i.url}` : ''}`).join('\n');
+          text = `Here are some recommended resources:\n${items}`;
+        } else if (first.name === 'getNews' && resp.type === 'news' && Array.isArray(resp.news)) {
+          const titles = resp.news.slice(0, 3).map(n => `• ${n.title}`).join('\n');
+          text = `Here are the top news items I found:\n${titles}`;
+        } else if (first.response && typeof first.response === 'string') {
+          text = first.response;
+        } else {
+          // Generic fallback summarizer
+          text = 'I found some information that may help — would you like to see more details?';
+        }
+      } catch (summErr) {
+        console.debug('Fallback summarizer failed:', summErr);
+        text = 'Sorry, I could not generate a response right now.';
+      }
+    }
+
     return {
       text,
       functionCalls,
