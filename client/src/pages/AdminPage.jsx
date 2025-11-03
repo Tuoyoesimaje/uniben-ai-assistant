@@ -29,6 +29,25 @@ const AdminPage = () => {
     news: ''
   });
 
+  // Helpers to normalize course offerings shapes from the API
+  const normalizeOfferings = (arr) => (arr || []).map(off => {
+    if (!off) return null;
+    if (typeof off === 'string') return { department: off };
+    const dept = off.department || off.departmentId || off.dept;
+    const departmentId = dept && (typeof dept === 'string' ? dept : (dept._id ? dept._id : dept));
+    return {
+      department: departmentId ? departmentId.toString() : undefined,
+      level: off.level || '',
+      schedule: off.schedule || '',
+      lecturerId: off.lecturerId ? (off.lecturerId._id ? off.lecturerId._id : off.lecturerId) : ''
+    };
+  }).filter(Boolean);
+
+  const normalizeCourses = (coursesArr) => (coursesArr || []).map(c => ({
+    ...c,
+    departments_offering: normalizeOfferings(c.departments_offering)
+  }));
+
   useEffect(() => {
     if (user && ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin', 'staff'].includes(user.role)) {
       loadDashboardData();
@@ -121,7 +140,30 @@ const AdminPage = () => {
           if (departmentsData && departmentsData.success) setDepartments(departmentsData.departments || []);
 
           const coursesData = data[dataIndex++];
-          if (coursesData && coursesData.success) setCourses(coursesData.courses || []);
+          if (coursesData && coursesData.success) {
+            // Normalize course offerings shape so frontend can handle both id and object forms
+            const normalizeOfferings = (arr) => (arr || []).map(off => {
+              // off can be a string id, an object with department or a nested object
+              if (!off) return null;
+              if (typeof off === 'string') return { department: off };
+              // If off has a `department` field that is an object or id
+              const dept = off.department || off.dept || off.departmentId || off.department_id;
+              const departmentId = dept && (typeof dept === 'string' ? dept : (dept._id ? dept._id : dept));
+              return {
+                department: departmentId ? departmentId.toString() : undefined,
+                level: off.level || off.levelNumber || off.level || '',
+                schedule: off.schedule || '',
+                lecturerId: off.lecturerId ? (off.lecturerId._id ? off.lecturerId._id : off.lecturerId) : (off.lecturer ? (off.lecturer._id || off.lecturer) : '')
+              };
+            }).filter(Boolean);
+
+            const normalizedCourses = (coursesData.courses || []).map(c => ({
+              ...c,
+              departments_offering: normalizeOfferings(c.departments_offering)
+            }));
+
+            setCourses(normalizedCourses);
+          }
 
           const quizzesData = data[dataIndex++];
           if (quizzesData && quizzesData.success) setQuizzes(quizzesData.quizzes || []);
@@ -148,7 +190,7 @@ const AdminPage = () => {
           if (buildingsData && buildingsData.success) setBuildings(buildingsData.buildings || []);
 
           const coursesData = data[dataIndex++];
-          if (coursesData && coursesData.success) setCourses(coursesData.courses || []);
+          if (coursesData && coursesData.success) setCourses(normalizeCourses(coursesData.courses || []));
 
           const usersData = data[dataIndex++];
           if (usersData && usersData.success) setUsers(usersData.users || []);
@@ -163,7 +205,7 @@ const AdminPage = () => {
           if (buildingsData && buildingsData.success) setBuildings(buildingsData.buildings || []);
 
           const coursesData = data[dataIndex++];
-          if (coursesData && coursesData.success) setCourses(coursesData.courses || []);
+          if (coursesData && coursesData.success) setCourses(normalizeCourses(coursesData.courses || []));
 
           const newsData = data[dataIndex++];
           if (newsData && newsData.success) setNews(newsData.news || []);
@@ -175,7 +217,7 @@ const AdminPage = () => {
           if (buildingsData && buildingsData.success) setBuildings(buildingsData.buildings || []);
 
           const coursesData = data[dataIndex++];
-          if (coursesData && coursesData.success) setCourses(coursesData.courses || []);
+          if (coursesData && coursesData.success) setCourses(normalizeCourses(coursesData.courses || []));
 
           const newsData = data[dataIndex++];
           if (newsData && newsData.success) setNews(newsData.news || []);
@@ -230,6 +272,26 @@ const AdminPage = () => {
 
     setModalType(type);
     setEditingItem(item);
+    // If opening course modal for editing, normalize departments_offering shape
+    if (type === 'course' && item) {
+      const normalizeOfferings = (arr) => (arr || []).map(off => {
+        if (!off) return null;
+        if (typeof off === 'string') return { department: off };
+        const dept = off.department || off.departmentId || off.dept;
+        const departmentId = dept && (typeof dept === 'string' ? dept : (dept._id ? dept._id : dept));
+        return {
+          department: departmentId ? departmentId.toString() : undefined,
+          level: off.level || '',
+          schedule: off.schedule || '',
+          lecturerId: off.lecturerId ? (off.lecturerId._id ? off.lecturerId._id : off.lecturerId) : ''
+        };
+      }).filter(Boolean);
+
+      setFormData({ ...item, departments_offering: normalizeOfferings(item.departments_offering) });
+      setShowModal(true);
+      return;
+    }
+
     setFormData(item || {});
     setShowModal(true);
   };
@@ -820,7 +882,8 @@ const AdminPage = () => {
                       <option value="">Select Course to Offer</option>
                       {courses && courses.filter && courses.filter(course =>
                         !course.baseCourseId && // Only show base courses (not offerings)
-                        course.departments_offering?.includes(user.department) // Only show courses assigned to this department
+                        // departments_offering normalized to array of { department: id, ... }
+                        course.departments_offering?.some(off => off.department === user.department)
                       ).map(course => (
                         <option key={course._id} value={course._id}>
                           {course.code} - {course.title}
@@ -1212,7 +1275,12 @@ const AdminPage = () => {
                                    <div className="flex flex-wrap gap-1">
                                      {course.departments_offering.slice(0, 3).map((offering, idx) => (
                                        <span key={idx} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                                         {offering.department?.name || 'Unknown'}
+                                             {(() => {
+                                               // departments_offering normalized to { department: id }
+                                               const deptId = offering.department || offering;
+                                               const deptObj = departments.find(d => (d._id ? d._id.toString() === deptId?.toString() : d === deptId));
+                                               return deptObj ? deptObj.name : 'Unknown';
+                                             })()}
                                        </span>
                                      ))}
                                      {course.departments_offering.length > 3 && (
@@ -1248,7 +1316,11 @@ const AdminPage = () => {
                              <td className="py-3 px-4 font-mono text-sm">{course.code}</td>
                              <td className="py-3 px-4">{course.title}</td>
                              <td className="py-3 px-4">{course.lecturerId?.name || 'Not Assigned'}</td>
-                             <td className="py-3 px-4">{course.level} Level</td>
+                            <td className="py-3 px-4">{(() => {
+                              const deptOff = course.departments_offering && course.departments_offering.find && course.departments_offering.find(o => o.department === user.department);
+                              const lvl = deptOff?.level || course.level || '';
+                              return lvl ? `${lvl} Level` : 'N/A';
+                            })()}</td>
                              <td className="py-3 px-4">
                                <div className="text-sm">
                                  <div className="font-medium">{course.schedule || 'TBA'}</div>
@@ -1755,18 +1827,18 @@ const AdminPage = () => {
                             <label key={dept._id} className="flex items-center gap-3 p-2 border rounded hover:bg-gray-50">
                               <input
                                 type="checkbox"
-                                checked={formData.departments_offering?.includes(dept._id) || false}
+                                checked={formData.departments_offering?.some(d => d.department === dept._id) || false}
                                 onChange={(e) => {
                                   const currentDepts = formData.departments_offering || [];
                                   if (e.target.checked) {
                                     setFormData(prev => ({
                                       ...prev,
-                                      departments_offering: [...currentDepts, dept._id]
+                                      departments_offering: [...currentDepts, { department: dept._id }]
                                     }));
                                   } else {
                                     setFormData(prev => ({
                                       ...prev,
-                                      departments_offering: currentDepts.filter(id => id !== dept._id)
+                                      departments_offering: currentDepts.filter(d => d.department !== dept._id)
                                     }));
                                   }
                                 }}

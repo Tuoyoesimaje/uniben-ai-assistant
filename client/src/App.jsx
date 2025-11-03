@@ -11,6 +11,11 @@ import QuizStart from './components/quiz/QuizStart';
 import QuizInterface from './components/quiz/QuizInterface';
 import QuizResults from './components/quiz/QuizResults';
 import Navbar from './components/shared/Navbar';
+import AdminRedirect from './pages/AdminRedirect';
+import SystemAdminPage from './pages/SystemAdminPage';
+import DepartmentAdminPage from './pages/DepartmentAdminPage';
+import LecturerAdminPage from './pages/LecturerAdminPage';
+import BursaryAdminPage from './pages/BursaryAdminPage';
 import './styles/globals.css';
 
 // Dashboard component for authenticated users
@@ -90,11 +95,49 @@ function App() {
               }
             />
 
+            {/* Admin landing route - redirects based on role */}
             <Route
               path="/admin"
               element={
-                <ProtectedRoute>
-                  <AdminPage />
+                <ProtectedRoute requireAuth={true}>
+                  <AdminRedirect />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Role specific admin routes */}
+            <Route
+              path="/admin/system"
+              element={
+                <ProtectedRoute allowedRoles={["system_admin"]}>
+                  <SystemAdminPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/department"
+              element={
+                <ProtectedRoute allowedRoles={["departmental_admin"]}>
+                  <DepartmentAdminPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/lecturer"
+              element={
+                <ProtectedRoute allowedRoles={["lecturer_admin"]}>
+                  <LecturerAdminPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/bursary"
+              element={
+                <ProtectedRoute allowedRoles={["bursary_admin"]}>
+                  <BursaryAdminPage />
                 </ProtectedRoute>
               }
             />

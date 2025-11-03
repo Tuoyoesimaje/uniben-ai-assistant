@@ -20,112 +20,10 @@ const {
 // Apply authentication to all routes
 router.use(authMiddleware);
 
-// User Management Routes (System Admin only for full access)
-router.get('/users', requireSystemAdmin, async (req, res) => {
-  try {
-    const users = await User.find()
-      .select('-__v')
-      .populate('department', 'name')
-      .sort({ createdAt: -1 });
-    res.json({ success: true, users });
-  } catch (error) {
-    console.error('Create course error:', error);
-    res.status(500).json({ success: false, message: error.message || 'Server error' });
-  }
-});
-
-router.post('/users', requireSystemAdmin, async (req, res) => {
-  try {
-    const { name, matricNumber, staffId, role, email, department, courses } = req.body;
-
-    // Validate required fields
-    if (!name || !role) {
-      return res.status(400).json({ success: false, message: 'Name and role are required' });
-    }
-
-    // Validate admin roles can only be assigned by system admin
-    const adminRoles = ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin'];
-    if (adminRoles.includes(role) && req.user.role !== 'system_admin') {
-      return res.status(403).json({ success: false, message: 'Only system admin can create admin accounts' });
-    }
-
-    // Validate role-specific requirements
-    if (role === 'student' && !matricNumber) {
-      return res.status(400).json({ success: false, message: 'Matriculation number is required for students' });
-    }
-    if ((role === 'staff' || adminRoles.includes(role)) && !staffId) {
-      return res.status(400).json({ success: false, message: 'Staff ID is required for staff members and admins' });
-    }
-
-    // Check for existing user
-    if (role === 'student' && matricNumber) {
-      const existing = await User.findOne({ matricNumber });
-      if (existing) {
-        return res.status(400).json({ success: false, message: 'Matric number already exists' });
-      }
-    }
-
-    if ((role === 'staff' || adminRoles.includes(role)) && staffId) {
-      const existing = await User.findOne({ staffId });
-      if (existing) {
-        return res.status(400).json({ success: false, message: 'Staff ID already exists' });
-      }
-    }
-
-    const user = new User({ name, matricNumber, staffId, role, email, department, courses });
-    await user.save();
-    await user.populate('department', 'name');
-
-    res.status(201).json({ success: true, user });
-  } catch (error) {
-    console.error('User creation error:', error);
-    res.status(500).json({ success: false, message: error.message || 'Server error' });
-  }
-});
-
-router.put('/users/:id', requireSystemAdmin, async (req, res) => {
-  try {
-    const { name, matricNumber, staffId, role, email, department, courses } = req.body;
-
-    // Prevent changing system admin role unless current user is system admin
-    if (role === 'system_admin' && req.user.role !== 'system_admin') {
-      return res.status(403).json({ success: false, message: 'Cannot modify system admin role' });
-    }
-
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { name, matricNumber, staffId, role, email, department, courses },
-      { new: true }
-    ).populate('department', 'name');
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    res.json({ success: true, user });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
-
-router.delete('/users/:id', requireSystemAdmin, async (req, res) => {
-  try {
-    const userToDelete = await User.findById(req.params.id);
-    if (!userToDelete) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    // Prevent deleting system admin accounts
-    if (userToDelete.role === 'system_admin') {
-      return res.status(403).json({ success: false, message: 'Cannot delete system admin accounts' });
-    }
-
-    await User.findByIdAndDelete(req.params.id);
-    res.json({ success: true, message: 'User deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
+// System admin routes (users, departments) are split into a sub-router for clarity.
+// We mount the same router at both the root (legacy) and '/system' so existing client calls keep working.
+router.use('/', require('./systemAdminRoutes'));
+router.use('/system', require('./systemAdminRoutes'));
 
 // Building Management Routes
 router.get('/buildings', async (req, res) => {
@@ -307,8 +205,20 @@ router.post('/courses', async (req, res) => {
         baseCourseId: courseId
       });
 
+      // Record offering metadata on the departments_offering array so traceability is preserved
+      courseOffering.departments_offering = [{
+        department: user.department,
+        level: level,
+        lecturerId: lecturerId || null,
+        schedule: schedule || null,
+        semester: semester || baseCourse.semester || 'both',
+        assignedBy: req.user._id,
+        offeredAt: new Date(),
+        isActive: true
+      }];
+
       await courseOffering.save();
-      await courseOffering.populate(['department', 'lecturerId', 'prerequisites']);
+      await courseOffering.populate(['department', 'departments_offering.department', 'departments_offering.lecturerId', 'prerequisites']);
       return res.status(201).json({ success: true, course: courseOffering });
 
     } else if (user.role === 'lecturer_admin') {
@@ -349,6 +259,26 @@ router.post('/courses', async (req, res) => {
         };
       }).filter(Boolean);
       courseData.departments_offering = normalized;
+    }
+
+    // If the request is from a departmental admin, set assignedBy and offeredAt for offerings from their department
+    if (user.role === 'departmental_admin' && Array.isArray(courseData.departments_offering)) {
+      courseData.departments_offering = courseData.departments_offering.map(off => {
+        try {
+          const deptId = off.department?.toString ? off.department.toString() : String(off.department);
+          if (deptId === (user.department?.toString ? user.department.toString() : String(user.department))) {
+            return {
+              ...off,
+              assignedBy: req.user._id,
+              offeredAt: off.offeredAt || new Date(),
+              isActive: off.isActive !== undefined ? off.isActive : true
+            };
+          }
+        } catch (e) {
+          // fallback: leave off unchanged
+        }
+        return off;
+      });
     }
 
     // Set department from first offering if not provided
@@ -440,14 +370,30 @@ router.put('/courses/:id', async (req, res) => {
         const updatedOfferings = [...(course.departments_offering || [])];
 
         departments_offering.forEach(newOffering => {
+          // Ensure offering belongs to this admin's department
+          const newDept = newOffering.department?.toString ? newOffering.department.toString() : String(newOffering.department);
+
+          // populate assignedBy/offeredAt for new offerings from this department
+          if (newDept === (user.department?.toString ? user.department.toString() : String(user.department))) {
+            if (!newOffering.assignedBy) newOffering.assignedBy = req.user._id;
+            if (!newOffering.offeredAt) newOffering.offeredAt = new Date();
+            if (newOffering.isActive === undefined) newOffering.isActive = true;
+          }
+
           const existingIndex = updatedOfferings.findIndex(offering =>
-            offering.department.toString() === newOffering.department &&
+            offering.department.toString() === newDept &&
             offering.level === newOffering.level
           );
 
           if (existingIndex >= 0) {
-            // Update existing offering
-            updatedOfferings[existingIndex] = { ...updatedOfferings[existingIndex], ...newOffering };
+            // Update existing offering (preserve existing assignedBy if present)
+            updatedOfferings[existingIndex] = { ...updatedOfferings[existingIndex].toObject?.() || updatedOfferings[existingIndex], ...newOffering };
+            if (!updatedOfferings[existingIndex].assignedBy && newDept === (user.department?.toString ? user.department.toString() : String(user.department))) {
+              updatedOfferings[existingIndex].assignedBy = req.user._id;
+            }
+            if (!updatedOfferings[existingIndex].offeredAt && newDept === (user.department?.toString ? user.department.toString() : String(user.department))) {
+              updatedOfferings[existingIndex].offeredAt = new Date();
+            }
           } else {
             // Add new offering
             updatedOfferings.push(newOffering);

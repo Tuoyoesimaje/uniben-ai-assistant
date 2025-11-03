@@ -50,6 +50,15 @@ const courseSchema = new mongoose.Schema({
       enum: ['first', 'second', 'both'],
       default: 'both'
     },
+    // Who assigned/approved this offering (department admin)
+    assignedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    // Timestamp when this offering was created/activated
+    offeredAt: {
+      type: Date
+    },
     isActive: {
       type: Boolean,
       default: true
@@ -270,6 +279,7 @@ courseSchema.index({ code: 1 });
 courseSchema.index({ title: 'text', description: 'text' });
 courseSchema.index({ department: 1 });
 courseSchema.index({ departments_offering: 1 });
+courseSchema.index({ 'departments_offering.assignedBy': 1 });
 courseSchema.index({ faculty: 1 });
 courseSchema.index({ level: 1 });
 courseSchema.index({ credit: 1 });
