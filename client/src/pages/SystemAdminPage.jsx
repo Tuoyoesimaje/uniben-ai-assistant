@@ -290,94 +290,200 @@ const SystemAdminPage = () => {
     );
   };
 
+  // local ui state for per-section navigation and pagination
+  const [activeTab, setActiveTab] = useState('dashboard');
+  // search terms for each section
+  const [searchTerms, setSearchTerms] = useState({ buildings: '', users: '', courses: '', departments: '' });
+  const [usersPage, setUsersPage] = useState(1);
+  const [coursesPage, setCoursesPage] = useState(1);
+  const [buildingsPage, setBuildingsPage] = useState(1);
+  const pageSize = 30;
+
+  const paginate = (arr, page) => {
+    if (!Array.isArray(arr)) return [];
+    const start = (page - 1) * pageSize;
+    return arr.slice(start, start + pageSize);
+  };
+
+  const filterBySearch = (arr, term, fields = []) => {
+    if (!term) return arr || [];
+    const q = term.toLowerCase();
+    return (arr || []).filter(item => fields.some(f => {
+      const val = f.split('.').reduce((o, k) => o?.[k], item);
+      return val && val.toString().toLowerCase().includes(q);
+    }));
+  };
+
+  // Derived filtered + paginated data
+  const filteredBuildings = filterBySearch(buildings, searchTerms.buildings, ['name', 'location', 'department.name']);
+  const pagedBuildings = paginate(filteredBuildings, buildingsPage);
+
+  const filteredUsers = filterBySearch(users, searchTerms.users, ['name', 'email', 'role', 'department.name']);
+  const pagedUsers = paginate(filteredUsers, usersPage);
+
+  const filteredCourses = filterBySearch(courses, searchTerms.courses, ['code', 'title', 'department.name']);
+  const pagedCourses = paginate(filteredCourses, coursesPage);
+
   return (
-    <AdminLayout title="System Administration">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="p-4 bg-white rounded-lg shadow-sm border">
-          <h3 className="font-semibold mb-2">Users</h3>
-          <p className="text-sm text-slate-600">Manage system users and roles.</p>
-          <div className="mt-3">
-            <button onClick={openCreateUser} className="btn-primary">Create User</button>
+    <AdminLayout>
+      <div className="md:flex md:gap-6">
+        {/* Sidebar for desktop */}
+        <aside className="hidden md:block md:w-64">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow p-4 border">
+            <h3 className="text-sm font-semibold mb-3">System Admin</h3>
+            <nav className="space-y-1">
+              <button onClick={() => setActiveTab('dashboard')} className={`w-full text-left px-3 py-2 rounded ${activeTab==='dashboard'?'bg-emerald-600 text-white':'text-slate-700 hover:bg-emerald-50'}`}>Overview</button>
+              <button onClick={() => setActiveTab('buildings')} className={`w-full text-left px-3 py-2 rounded ${activeTab==='buildings'?'bg-emerald-600 text-white':'text-slate-700 hover:bg-emerald-50'}`}>Buildings</button>
+              <button onClick={() => setActiveTab('departments')} className={`w-full text-left px-3 py-2 rounded ${activeTab==='departments'?'bg-emerald-600 text-white':'text-slate-700 hover:bg-emerald-50'}`}>Departments</button>
+              <button onClick={() => setActiveTab('courses')} className={`w-full text-left px-3 py-2 rounded ${activeTab==='courses'?'bg-emerald-600 text-white':'text-slate-700 hover:bg-emerald-50'}`}>Courses</button>
+              <button onClick={() => setActiveTab('users')} className={`w-full text-left px-3 py-2 rounded ${activeTab==='users'?'bg-emerald-600 text-white':'text-slate-700 hover:bg-emerald-50'}`}>Users</button>
+            </nav>
+          </div>
+        </aside>
+
+        <div className="flex-1">
+          {/* Mobile tabs */}
+          <div className="md:hidden mb-4">
+            <div className="flex gap-2 overflow-x-auto">
+              {['dashboard','buildings','departments','courses','users'].map(tab => (
+                <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-shrink-0 px-3 py-2 rounded ${activeTab===tab? 'bg-emerald-600 text-white':'bg-white/90 text-slate-700'}`}>
+                  {tab[0].toUpperCase()+tab.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Section header: search + action */}
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow p-4 border mb-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <h1 className="text-2xl font-bold text-[#0f172a]">System Administration</h1>
+                <p className="text-sm text-slate-600">Manage system-wide resources.</p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {/* Search input adapts to active tab */}
+                <input
+                  placeholder={`Search ${activeTab}`}
+                  className="input w-60"
+                  value={searchTerms[activeTab === 'buildings' ? 'buildings' : activeTab === 'users' ? 'users' : activeTab === 'courses' ? 'courses' : 'departments']}
+                  onChange={(e) => setSearchTerms(prev => ({ ...prev, [activeTab === 'buildings' ? 'buildings' : activeTab === 'users' ? 'users' : activeTab === 'courses' ? 'courses' : 'departments']: e.target.value }))}
+                />
+                {activeTab === 'users' && <button onClick={openCreateUser} className="btn-primary">Create User</button>}
+                {activeTab === 'buildings' && <button onClick={openCreateBuilding} className="btn-primary">Add Building</button>}
+                {activeTab === 'courses' && <button onClick={openCreateCourse} className="btn-primary">Add Course</button>}
+              </div>
+            </div>
+          </div>
+
+          {/* Main content card */}
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow p-4 border">
+            {activeTab === 'dashboard' && (
+              <div>
+                <h2 className="font-semibold mb-3">Overview</h2>
+                {loadingStats ? (
+                  <p className="text-slate-600">Loading...</p>
+                ) : stats ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="p-3 border rounded text-center">
+                      <div className="text-2xl font-bold">{stats.users ?? '-'}</div>
+                      <div className="text-sm text-slate-600">Users</div>
+                    </div>
+                    <div className="p-3 border rounded text-center">
+                      <div className="text-2xl font-bold">{stats.buildings ?? '-'}</div>
+                      <div className="text-sm text-slate-600">Buildings</div>
+                    </div>
+                    <div className="p-3 border rounded text-center">
+                      <div className="text-2xl font-bold">{stats.departments ?? '-'}</div>
+                      <div className="text-sm text-slate-600">Departments</div>
+                    </div>
+                    <div className="p-3 border rounded text-center">
+                      <div className="text-2xl font-bold">{stats.courses ?? '-'}</div>
+                      <div className="text-sm text-slate-600">Courses</div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-slate-600">Unable to load statistics.</p>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'buildings' && (
+              <div>
+                <h2 className="font-semibold mb-3">Buildings</h2>
+                <BuildingsList buildings={pagedBuildings} onDelete={deleteBuilding} onEdit={(b) => { setBuildingForm(b); setShowBuildingModal(true); }} />
+                {/* pagination */}
+                {filteredBuildings.length > pageSize && (
+                  <div className="mt-3 flex justify-end items-center gap-2">
+                    <button onClick={() => setBuildingsPage(Math.max(1, buildingsPage-1))} className="px-3 py-1 border rounded">Prev</button>
+                    <div className="text-sm">Page {buildingsPage} of {Math.ceil(filteredBuildings.length / pageSize)}</div>
+                    <button onClick={() => setBuildingsPage(Math.min(Math.ceil(filteredBuildings.length / pageSize), buildingsPage+1))} className="px-3 py-1 border rounded">Next</button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'departments' && (
+              <div>
+                <h2 className="font-semibold mb-3">Departments</h2>
+                <DepartmentsList departments={departments} onDelete={(id) => { if (confirm('Delete this department?')) { /* reuse delete handler */ } }} onEdit={(d) => { setDeptForm(d); setShowDeptModal(true); }} />
+              </div>
+            )}
+
+            {activeTab === 'courses' && (
+              <div>
+                <h2 className="font-semibold mb-3">Courses</h2>
+                <CoursesList courses={pagedCourses} onDelete={deleteCourse} onEdit={(c) => { setCourseForm(c); setShowCourseModal(true); }} />
+                {filteredCourses.length > pageSize && (
+                  <div className="mt-3 flex justify-end items-center gap-2">
+                    <button onClick={() => setCoursesPage(Math.max(1, coursesPage-1))} className="px-3 py-1 border rounded">Prev</button>
+                    <div className="text-sm">Page {coursesPage} of {Math.ceil(filteredCourses.length / pageSize)}</div>
+                    <button onClick={() => setCoursesPage(Math.min(Math.ceil(filteredCourses.length / pageSize), coursesPage+1))} className="px-3 py-1 border rounded">Next</button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'users' && (
+              <div>
+                <h2 className="font-semibold mb-3">Users</h2>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-left">
+                    <thead>
+                      <tr>
+                        <th className="px-3 py-2">Name</th>
+                        <th className="px-3 py-2">Role</th>
+                        <th className="px-3 py-2">Department</th>
+                        <th className="px-3 py-2">Email</th>
+                        <th className="px-3 py-2">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagedUsers.map(u => (
+                        <tr key={u._id} className="border-t">
+                          <td className="px-3 py-2">{u.name}</td>
+                          <td className="px-3 py-2">{u.role}</td>
+                          <td className="px-3 py-2">{u.department?.name ?? '-'}</td>
+                          <td className="px-3 py-2">{u.email ?? '-'}</td>
+                          <td className="px-3 py-2">
+                            <button onClick={() => deleteUser(u._id)} className="text-red-600 hover:underline">Delete</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {filteredUsers.length > pageSize && (
+                  <div className="mt-3 flex justify-end items-center gap-2">
+                    <button onClick={() => setUsersPage(Math.max(1, usersPage-1))} className="px-3 py-1 border rounded">Prev</button>
+                    <div className="text-sm">Page {usersPage} of {Math.ceil(filteredUsers.length / pageSize)}</div>
+                    <button onClick={() => setUsersPage(Math.min(Math.ceil(filteredUsers.length / pageSize), usersPage+1))} className="px-3 py-1 border rounded">Next</button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
-
-        <div className="p-4 bg-white rounded-lg shadow-sm border">
-          <h3 className="font-semibold mb-2">Departments</h3>
-          <p className="text-sm text-slate-600">Create and manage departments and departmental admins.</p>
-          <div className="mt-3">
-            <button className="btn-primary">Open Departments</button>
-          </div>
-        </div>
-
-        <div className="p-4 bg-white rounded-lg shadow-sm border">
-          <h3 className="font-semibold mb-2">Courses</h3>
-          <p className="text-sm text-slate-600">Create global course templates and assign owning departments.</p>
-          <div className="mt-3">
-            <button className="btn-primary">Open Courses</button>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-6 bg-white rounded-lg p-4 border shadow-sm">
-        <h2 className="font-semibold mb-2">System stats</h2>
-        {loadingStats ? (
-          <p className="text-slate-600">Loading...</p>
-        ) : stats ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-3 border rounded text-center">
-              <div className="text-2xl font-bold">{stats.users ?? '-'}</div>
-              <div className="text-sm text-slate-600">Users</div>
-            </div>
-            <div className="p-3 border rounded text-center">
-              <div className="text-2xl font-bold">{stats.buildings ?? '-'}</div>
-              <div className="text-sm text-slate-600">Buildings</div>
-            </div>
-            <div className="p-3 border rounded text-center">
-              <div className="text-2xl font-bold">{stats.departments ?? '-'}</div>
-              <div className="text-sm text-slate-600">Departments</div>
-            </div>
-            <div className="p-3 border rounded text-center">
-              <div className="text-2xl font-bold">{stats.courses ?? '-'}</div>
-              <div className="text-sm text-slate-600">Courses</div>
-            </div>
-          </div>
-        ) : (
-          <p className="text-slate-600">Unable to load statistics.</p>
-        )}
-      </div>
-
-      <div className="mt-6 bg-white rounded-lg p-4 border shadow-sm">
-        <h2 className="font-semibold mb-4">Users</h2>
-        {usersLoading ? (
-          <p className="text-slate-600">Loading users...</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left">
-              <thead>
-                <tr>
-                  <th className="px-3 py-2">Name</th>
-                  <th className="px-3 py-2">Role</th>
-                  <th className="px-3 py-2">Department</th>
-                  <th className="px-3 py-2">Email</th>
-                  <th className="px-3 py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map(u => (
-                  <tr key={u._id} className="border-t">
-                    <td className="px-3 py-2">{u.name}</td>
-                    <td className="px-3 py-2">{u.role}</td>
-                    <td className="px-3 py-2">{u.department?.name ?? '-'}</td>
-                    <td className="px-3 py-2">{u.email ?? '-'}</td>
-                    <td className="px-3 py-2">
-                      <button onClick={() => deleteUser(u._id)} className="text-red-600 hover:underline">Delete</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
 
       {/* Create user modal */}
@@ -415,56 +521,7 @@ const SystemAdminPage = () => {
           </div>
         </div>
       )}
-
-  {/* Departments management */}
-      <div className="mt-6 bg-white rounded-lg p-4 border shadow-sm">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold mb-4">Departments</h2>
-          <div>
-            <button onClick={() => { setDeptForm({ name: '', code: '' }); setShowDeptModal(true); }} className="btn-primary">Create Department</button>
-          </div>
-        </div>
-
-        <DepartmentsList
-          departments={departments}
-          onDelete={async (id) => {
-            if (!confirm('Delete this department?')) return;
-            try {
-              const res = await axios.delete(`/api/admin/departments/${id}`);
-              if (res.data?.success) {
-                setDepartments(prev => prev.filter(d => d._id !== id));
-              }
-            } catch (err) {
-              console.error('Delete department failed', err);
-              alert(err.response?.data?.message || 'Failed to delete department');
-            }
-          }}
-          onEdit={(dept) => {
-            setDeptForm({ name: dept.name || '', code: dept.code || '', _id: dept._id });
-            setShowDeptModal(true);
-          }}
-        />
-      </div>
-
-      {/* Courses management */}
-      <div className="mt-6 bg-white rounded-lg p-4 border shadow-sm">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold mb-4">Courses</h2>
-          <div>
-            <button onClick={() => { openCreateCourse(); }} className="btn-primary">Create Course</button>
-          </div>
-        </div>
-
-        {coursesLoading ? (
-          <p className="text-slate-600">Loading courses...</p>
-        ) : (
-          <CoursesList
-            courses={courses}
-            onEdit={(c) => { setCourseForm({ code: c.code, title: c.title, department: c.department?._id || '', credit: c.credit, level: c.level, _id: c._id, departments_offering: c.departments_offering || [] }); setShowCourseModal(true); }}
-            onDelete={deleteCourse}
-          />
-        )}
-      </div>
+            {/* Removed duplicate bottom lists — per-tab UI at the top is the single source of truth */}
 
       {/* Course modal */}
       {showCourseModal && (
@@ -555,24 +612,7 @@ const SystemAdminPage = () => {
       )}
 
       {/* Buildings management */}
-      <div className="mt-6 bg-white rounded-lg p-4 border shadow-sm">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold mb-4">Buildings</h2>
-          <div>
-            <button onClick={() => { setBuildingForm({ name: '', location: '', department: '' }); setShowBuildingModal(true); }} className="btn-primary">Create Building</button>
-          </div>
-        </div>
-
-        {buildingsLoading ? (
-          <p className="text-slate-600">Loading buildings...</p>
-        ) : (
-          <BuildingsList
-            buildings={buildings}
-            onEdit={(b) => { setBuildingForm({ name: b.name, location: b.location || '', department: b.department?._id || '', _id: b._id }); setShowBuildingModal(true); }}
-            onDelete={deleteBuilding}
-          />
-        )}
-      </div>
+      {/* Buildings management moved to the per-tab section above; keeping the modal below */}
 
       {/* Building modal */}
       {showBuildingModal && (
