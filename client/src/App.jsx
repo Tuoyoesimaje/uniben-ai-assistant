@@ -5,6 +5,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import ChatPage from './components/chat/ChatPage';
 import MapPage from './pages/MapPage';
 import NewsPage from './pages/NewsPage';
+import FeesPage from './pages/FeesPage';
 import QuizUpload from './components/quiz/QuizUpload';
 import QuizStart from './components/quiz/QuizStart';
 import QuizInterface from './components/quiz/QuizInterface';
@@ -66,6 +67,9 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            {/* Public fees lookup (catalog) */}
+            <Route path="/fees" element={<FeesPage />} />
 
             <Route
               path="/dashboard"

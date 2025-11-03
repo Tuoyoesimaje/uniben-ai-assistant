@@ -3,6 +3,7 @@ import AdminLayout from '../components/admin/AdminLayout';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import NewsManagementTab from '../components/news/NewsManagementTab';
+import FeesCatalogsTab from '../components/bursary/FeesCatalogsTab';
 
 const BursaryAdminPage = () => {
   const [stats, setStats] = useState(null);
@@ -41,8 +42,8 @@ const BursaryAdminPage = () => {
 
         <div className="flex-1">
           <div className="md:hidden mb-4">
-            <div className="flex gap-2 overflow-x-auto">
-              {['overview'].map(tab => (
+              <div className="flex gap-2 overflow-x-auto">
+              {['overview','news','catalogs'].map(tab => (
                 <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-shrink-0 px-3 py-2 rounded ${activeTab===tab? 'bg-emerald-600 text-white':'bg-white/90 text-slate-700'}`}>
                   {tab[0].toUpperCase()+tab.slice(1)}
                 </button>
@@ -64,7 +65,7 @@ const BursaryAdminPage = () => {
             </div>
           </div>
 
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow p-4 border">
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow p-4 border">
             {activeTab === 'overview' && (
               <div>
                 <h2 className="font-semibold mb-3">Finance Overview</h2>
@@ -92,6 +93,11 @@ const BursaryAdminPage = () => {
             {activeTab === 'news' && (
               <div>
                 <NewsManagementTab user={user} />
+              </div>
+            )}
+            {activeTab === 'catalogs' && (
+              <div>
+                <FeesCatalogsTab />
               </div>
             )}
           </div>
