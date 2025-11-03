@@ -124,35 +124,24 @@ router.delete('/departments/:id', requireSystemAdmin, async (req, res) => {
 });
 
 // Course Management Routes (role-based access)
+const courseService = require('../services/courseService');
+
 router.get('/courses', async (req, res) => {
   try {
     const user = req.user;
-    let query = {};
+    let courses = [];
 
-    // Filter courses based on role
-    if (user.role === 'system_admin') {
-      // System admin sees all global courses
-      // No filter - sees all courses
+    if (user.role === 'system_admin' || user.role === 'bursary_admin' || user.role === 'staff') {
+      courses = await courseService.findCoursesForSystemAdmin();
     } else if (user.role === 'departmental_admin') {
-      // Departmental admin sees courses offered by their department (owned + borrowed)
-      query.$or = [
-        { department: user.department }, // Own courses
-        { departments_offering: user.department } // Borrowed courses
-      ];
+      // Departmental admin: use department-specific route /api/admin/department/courses
+      courses = await courseService.findCoursesForDepartment(user.department);
     } else if (user.role === 'lecturer_admin') {
-      // Lecturer admin sees courses they are assigned to teach
-      query.departments_offering = {
-        $elemMatch: { lecturerId: user._id }
-      };
+      courses = await courseService.findCoursesForLecturer(user._id);
+    } else {
+      courses = await courseService.findCoursesForSystemAdmin();
     }
-    // Bursary admin and staff see all courses
 
-    const courses = await Course.find(query)
-      .populate('department', 'name')
-      .populate('departments_offering.department', 'name')
-      .populate('departments_offering.lecturerId', 'name staffId')
-      .populate('prerequisites', 'code title')
-      .sort({ code: 1 });
     res.json({ success: true, courses });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error' });
@@ -467,12 +456,10 @@ router.get('/stats', async (req, res) => {
       }
     }
 
-    // Departmental admin stats for their department
+    // Departmental admin stats have been moved to the department-specific router:
+    // GET /api/admin/department/stats
     if (user.role === 'departmental_admin') {
-      const deptUsers = await User.countDocuments({ department: user.department });
-      const deptCourses = await Course.findOfferedByDepartment(user.department);
-      stats.departmentUsers = deptUsers;
-      stats.departmentCourses = deptCourses.length;
+      return res.status(400).json({ success: false, message: 'Departmental stats available at /api/admin/department/stats' });
     }
 
     // Lecturer admin stats for their assigned course offerings

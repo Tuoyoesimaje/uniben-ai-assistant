@@ -15,6 +15,7 @@ const emptyOfferingForm = {
 const DepartmentAdminPage = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [lecturers, setLecturers] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState(emptyOfferingForm);
   const [editingCourse, setEditingCourse] = useState(null);
@@ -26,6 +27,13 @@ const DepartmentAdminPage = () => {
         setLoading(true);
         const res = await axios.get('/api/admin/courses');
         if (res.data?.success) setCourses(res.data.courses || []);
+        // load department lecturers for dropdowns
+        try {
+          const lecRes = await axios.get('/api/admin/department/lecturers');
+          if (lecRes.data?.success) setLecturers(lecRes.data.lecturers || []);
+        } catch (e) {
+          console.warn('Failed to load lecturers', e);
+        }
       } catch (err) {
         console.error('Failed to load department courses', err);
       } finally {
@@ -159,7 +167,12 @@ const DepartmentAdminPage = () => {
                 <div className="grid grid-cols-1 gap-3">
                   <input name="courseId" value={createForm.courseId} onChange={handleCreateChange} placeholder="Base Course ID (required)" className="input" required />
                   <input name="level" type="number" value={createForm.level} onChange={handleCreateChange} placeholder="Level (e.g., 100)" className="input" />
-                  <input name="lecturerId" value={createForm.lecturerId} onChange={handleCreateChange} placeholder="Lecturer ID (optional)" className="input" />
+                  <select name="lecturerId" value={createForm.lecturerId} onChange={handleCreateChange} className="input">
+                    <option value="">(unassigned)</option>
+                    {lecturers.map(l => (
+                      <option key={l._id} value={l._id}>{l.name} {l.staffId ? `(${l.staffId})` : ''}</option>
+                    ))}
+                  </select>
                   <input name="schedule" value={createForm.schedule} onChange={handleCreateChange} placeholder="Schedule (optional)" className="input" />
                   <select name="semester" value={createForm.semester} onChange={handleCreateChange} className="input">
                     <option value="both">Both</option>
@@ -185,7 +198,12 @@ const DepartmentAdminPage = () => {
               <h3 className="text-lg font-semibold mb-4">Edit Offering - {editingCourse.code}</h3>
               <form onSubmit={submitEdit}>
                 <div className="grid grid-cols-1 gap-3">
-                  <input name="lecturerId" value={editingCourse.lecturerId || ''} onChange={handleEditChange} placeholder="Lecturer ID" className="input" />
+                  <select name="lecturerId" value={editingCourse.lecturerId || (editingCourse.lecturerId?._id) || ''} onChange={handleEditChange} className="input">
+                    <option value="">(unassigned)</option>
+                    {lecturers.map(l => (
+                      <option key={l._1d} value={l._id}>{l.name} {l.staffId ? `(${l.staffId})` : ''}</option>
+                    ))}
+                  </select>
                   <input name="schedule" value={editingCourse.schedule || ''} onChange={handleEditChange} placeholder="Schedule" className="input" />
                   <select name="semester" value={editingCourse.semester || 'both'} onChange={handleEditChange} className="input">
                     <option value="both">Both</option>

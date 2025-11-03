@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Course = require('../models/Course');
+const User = require('../models/User');
 const { requireDepartmentalAdmin } = require('../middleware/roleAuth');
 
 // All routes here require departmental admin
@@ -10,20 +11,45 @@ router.use(requireDepartmentalAdmin);
 router.get('/courses', async (req, res) => {
   try {
     const user = req.user;
-    const courses = await Course.find({
+    const courseService = require('../services/courseService');
+    const courses = await courseService.findCoursesForDepartment(user.department);
+    res.json({ success: true, courses });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// List lecturers for the current department (for dropdowns / assignment)
+router.get('/lecturers', async (req, res) => {
+  try {
+    const user = req.user;
+    const lecturers = await User.find({ department: user.department, role: { $in: ['lecturer_admin'] } })
+      .select('name staffId email')
+      .sort({ name: 1 });
+    res.json({ success: true, lecturers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Departmental stats (users and courses for this department)
+router.get('/stats', async (req, res) => {
+  try {
+    const user = req.user;
+    const User = require('../models/User');
+    const deptUsers = await User.countDocuments({ department: user.department });
+
+    // Courses where this department is the base department or listed in departments_offering
+    const deptCourses = await Course.find({
       $or: [
         { department: user.department },
         { 'departments_offering.department': user.department }
       ]
-    })
-      .populate('department', 'name')
-      .populate('departments_offering.department', 'name')
-      .populate('departments_offering.lecturerId', 'name staffId')
-      .populate('prerequisites', 'code title')
-      .sort({ code: 1 });
+    });
 
-    res.json({ success: true, courses });
+    res.json({ success: true, stats: { departmentUsers: deptUsers, departmentCourses: deptCourses.length } });
   } catch (error) {
+    console.error('Department stats error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
