@@ -354,7 +354,7 @@ const BursaryAdminPage = () => {
             
             {activeTab === 'catalogs' && (
               <div className="p-6">
-                <FeesCatalogsTab />
+                <FeesCatalogsTab user={user} />
               </div>
             )}
           </div>
