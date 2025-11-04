@@ -68,7 +68,13 @@ app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/navigation', require('./routes/navigationRoutes'));
 app.use('/api/quiz', require('./routes/quizRoutes'));
 app.use('/api/news', require('./routes/newsRoutes'));
-app.use('/api/fees', require('./routes/feesRoutes'));
+// Legacy per-student fees routes removed. Return a clear deprecation response
+app.use('/api/fees', (req, res) => {
+  res.status(410).json({
+    success: false,
+    message: 'The legacy per-student Fees API has been removed. Use /api/bursary/fees for the official fees catalog (level/session). Per-student financial records are no longer available via the API.'
+  });
+});
 // Bursary informational fees catalog (public read, admin CRUD)
 app.use('/api/bursary/fees', require('./routes/bursaryFeesRoutes'));
 

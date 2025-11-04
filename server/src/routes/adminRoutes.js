@@ -6,7 +6,6 @@ const Department = require('../models/Department');
 const Course = require('../models/Course');
 const Quiz = require('../models/Quiz');
 const News = require('../models/News');
-const Fees = require('../models/Fees');
 const { authMiddleware } = require('../middleware/auth');
 const {
   requireSystemAdmin,
@@ -446,14 +445,10 @@ router.get('/stats', async (req, res) => {
       news: newsCount
     };
 
-    // Bursary admin additional stats
+    // Bursary admin additional stats — legacy per-student metrics removed
     if (user.role === 'bursary_admin' || user.role === 'system_admin') {
-      const feesStats = await Fees.getPaymentStats();
-      if (feesStats.length > 0) {
-        stats.feesCollected = feesStats[0].totalPaid || 0;
-        stats.totalOutstanding = feesStats[0].totalBalance || 0;
-        stats.fullyPaidStudents = feesStats[0].fullyPaid || 0;
-      }
+      // Provide a clear note so frontends and clients can adjust behaviour.
+      stats.feesNote = 'Per-student payment metrics have been removed from the API. Use /api/bursary/fees for catalog-level information.';
     }
 
     // Departmental admin stats have been moved to the department-specific router:
