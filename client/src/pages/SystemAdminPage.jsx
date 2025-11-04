@@ -73,13 +73,37 @@ const SystemAdminPage = () => {
 
   const handleUserChange = (e) => {
     const { name, value } = e.target;
-    setUserForm(prev => ({ ...prev, [name]: value }));
+    // Normalize certain fields
+    if (name === 'staffId' || name === 'matricNumber') {
+      setUserForm(prev => ({ ...prev, [name]: String(value).toUpperCase() }));
+    } else {
+      setUserForm(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const createUser = async (e) => {
     e.preventDefault();
     setActionLoading(true);
     try {
+      // Client-side validation to avoid server 400/500 from missing required fields
+      const { name, role, matricNumber, staffId } = userForm;
+      if (!name || !role) {
+        alert('Name and role are required');
+        setActionLoading(false);
+        return;
+      }
+      const adminRoles = ['system_admin', 'bursary_admin', 'departmental_admin', 'lecturer_admin'];
+      if (role === 'student' && !matricNumber) {
+        alert('Matriculation number is required for students');
+        setActionLoading(false);
+        return;
+      }
+      if ((role === 'staff' || adminRoles.includes(role)) && !staffId) {
+        alert('Staff ID is required for staff members and admins');
+        setActionLoading(false);
+        return;
+      }
+
       const payload = { ...userForm };
       const res = await axios.post('/api/admin/users', payload);
       if (res.data?.success) {
@@ -89,7 +113,9 @@ const SystemAdminPage = () => {
       }
     } catch (err) {
       console.error('Create user failed', err);
-      alert(err.response?.data?.message || 'Failed to create user');
+      // Show helpful message if server returned a validation error
+      const serverMsg = err?.response?.data?.message;
+      if (serverMsg) alert(serverMsg); else alert('Failed to create user');
     } finally {
       setActionLoading(false);
     }

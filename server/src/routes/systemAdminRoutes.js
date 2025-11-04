@@ -20,9 +20,12 @@ router.get('/users', requireSystemAdmin, async (req, res) => {
 
 router.post('/users', requireSystemAdmin, async (req, res) => {
   try {
-    const { name, matricNumber, staffId, role, email, department, courses } = req.body;
+  const { name, matricNumber, staffId, role, email, department, courses } = req.body;
 
-    // Validate required fields
+  // Sanitize department: Mongoose ObjectId cast fails on empty string
+  const dept = (typeof department === 'string' && department.trim() === '') ? undefined : department;
+
+  // Validate required fields
     if (!name || !role) {
       return res.status(400).json({ success: false, message: 'Name and role are required' });
     }
@@ -56,13 +59,21 @@ router.post('/users', requireSystemAdmin, async (req, res) => {
       }
     }
 
-    const user = new User({ name, matricNumber, staffId, role, email, department, courses });
+  const user = new User({ name, matricNumber, staffId, role, email, department: dept, courses });
     await user.save();
     await user.populate('department', 'name');
 
     res.status(201).json({ success: true, user });
   } catch (error) {
     console.error('User creation error:', error);
+    // Return validation errors with 400 so frontend can surface them
+    if (error.name === 'ValidationError') {
+      const details = Object.keys(error.errors).reduce((acc, key) => {
+        acc[key] = error.errors[key].message || String(error.errors[key]);
+        return acc;
+      }, {});
+      return res.status(400).json({ success: false, message: 'Validation failed', errors: details });
+    }
     res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 });
@@ -70,6 +81,8 @@ router.post('/users', requireSystemAdmin, async (req, res) => {
 router.put('/users/:id', requireSystemAdmin, async (req, res) => {
   try {
     const { name, matricNumber, staffId, role, email, department, courses } = req.body;
+    // Sanitize department field to avoid casting empty string to ObjectId
+    const dept = (typeof department === 'string' && department.trim() === '') ? undefined : department;
 
     // Prevent changing system admin role unless current user is system admin
     if (role === 'system_admin' && req.user.role !== 'system_admin') {
@@ -78,7 +91,7 @@ router.put('/users/:id', requireSystemAdmin, async (req, res) => {
 
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { name, matricNumber, staffId, role, email, department, courses },
+      { name, matricNumber, staffId, role, email, department: dept, courses },
       { new: true }
     ).populate('department', 'name');
 
@@ -88,6 +101,11 @@ router.put('/users/:id', requireSystemAdmin, async (req, res) => {
 
     res.json({ success: true, user });
   } catch (error) {
+    console.error('User update error:', error);
+    if (error.name === 'ValidationError') {
+      const details = Object.keys(error.errors).reduce((acc, key) => { acc[key] = error.errors[key].message || String(error.errors[key]); return acc; }, {});
+      return res.status(400).json({ success: false, message: 'Validation failed', errors: details });
+    }
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
