@@ -1,0 +1,772 @@
+# UNIBEN AI Assistant - User Testing Guide and Procedures
+
+## Table of Contents
+
+1. [Introduction](#introduction)
+2. [Testing Objectives](#testing-objectives)
+3. [User Roles and Testing Responsibilities](#user-roles-and-testing-responsibilities)
+4. [Pre-Testing Setup](#pre-testing-setup)
+5. [Testing Procedures by User Role](#testing-procedures-by-user-role)
+6. [Testing Scenarios](#testing-scenarios)
+7. [Bug Reporting Guidelines](#bug-reporting-guidelines)
+8. [Testing Checklists](#testing-checklists)
+9. [Performance Evaluation](#performance-evaluation)
+10. [Feedback Collection](#feedback-collection)
+
+## Introduction
+
+This guide provides comprehensive instructions for conducting user acceptance testing (UAT) of the UNIBEN AI Assistant system. The testing process involves real users from different roles within the university community to validate that the system meets their functional and usability requirements.
+
+### Testing Scope
+
+- **Functional Testing**: Verify all features work as expected
+- **Usability Testing**: Ensure intuitive user experience
+- **Performance Testing**: Validate system responsiveness
+- **Role-based Testing**: Confirm proper access controls
+- **Integration Testing**: Test system interactions and data flow
+
+### Testing Environment
+
+- **URL**: [To be provided during testing]
+- **Test Account Information**: [To be distributed separately]
+- **Support Contact**: testing-support@uniben.edu.ng
+
+## Testing Objectives
+
+### Primary Objectives
+
+1. **Validate Core Functionality**: Ensure all features work correctly
+2. **Verify Role-based Access**: Confirm appropriate permissions for each user type
+3. **Assess Usability**: Evaluate ease of use and user experience
+4. **Test Performance**: Validate system meets performance requirements
+5. **Identify Issues**: Discover bugs and usability problems before production
+
+### Success Criteria
+
+- 95% of test cases pass
+- User satisfaction score ≥ 4.0/5.0
+- All critical bugs resolved
+- Performance benchmarks met
+- Role-based access controls verified
+
+## User Roles and Testing Responsibilities
+
+### Student Users
+
+**Responsibilities**:
+- Test course information access
+- Validate chatbot functionality
+- Test navigation and building search
+- Verify quiz participation
+- Check news and announcements
+
+**Time Commitment**: 2-3 hours
+
+### Faculty and Staff
+
+**Responsibilities**:
+- Test administrative functions
+- Validate course management
+- Test user management capabilities
+- Verify news and announcement creation
+- Assess reporting features
+
+**Time Commitment**: 3-4 hours
+
+### Department Administrators
+
+**Responsibilities**:
+- Test department-specific functions
+- Validate lecturer and course assignments
+- Test department statistics and reporting
+- Verify permission boundaries
+
+**Time Commitment**: 3-4 hours
+
+### System Administrators
+
+**Responsibilities**:
+- Test system-wide administration
+- Validate user creation and management
+- Test system configuration
+- Verify system statistics and monitoring
+
+**Time Commitment**: 4-5 hours
+
+## Pre-Testing Setup
+
+### 1. Account Setup
+
+Before testing begins:
+
+1. **Receive Test Accounts**: Contact your testing coordinator for account credentials
+2. **Initial Login**: Log in using provided credentials
+3. **Profile Completion**: Complete your user profile with accurate information
+4. **Role Verification**: Confirm your role and permissions are correctly assigned
+
+### 2. Environment Familiarization
+
+1. **Read Documentation**: Review the UNIBEN AI Assistant user manual
+2. **Explore Interface**: Familiarize yourself with the main dashboard and navigation
+3. **Test Basic Functions**: Try basic features to understand system behavior
+4. **Set Expectations**: Understand what features you should have access to based on your role
+
+### 3. Testing Preparation
+
+1. **Prepare Test Scenarios**: Review the testing scenarios relevant to your role
+2. **Gather Sample Data**: Prepare any sample documents or information you might need
+3. **Schedule Testing**: Plan your testing sessions to avoid peak usage times
+4. **Note-taking Setup**: Prepare a method for documenting issues and feedback
+
+## Testing Procedures by User Role
+
+### Student Testing Procedure
+
+#### 1. Authentication Testing
+
+**Objective**: Verify login process and session management
+
+**Steps**:
+1. Navigate to the UNIBEN AI Assistant login page
+2. Enter your student credentials (matriculation number)
+3. Verify successful login and dashboard access
+4. Check that your name and role are displayed correctly
+5. Log out and attempt to access protected features
+6. Attempt to log in with invalid credentials
+
+**Expected Results**:
+- Successful login with valid credentials
+- Appropriate error messages for invalid credentials
+- Proper session management
+- Correct role-based interface display
+
+#### 2. Chatbot Functionality Testing
+
+**Objective**: Validate AI assistant capabilities
+
+**Steps**:
+1. Access the chat interface from the dashboard
+2. Send a greeting message: "Hello"
+3. Ask about courses: "What courses are available in Computer Science?"
+4. Request building information: "Where is the Computer Science department?"
+5. Ask for help: "How do I register for courses?"
+6. Test follow-up questions based on previous responses
+
+**Expected Results**:
+- AI responds within 10 seconds
+- Responses are relevant and helpful
+- Building location queries return accurate information
+- Context is maintained in conversations
+
+#### 3. Navigation Testing
+
+**Objective**: Verify building search and route calculation
+
+**Steps**:
+1. Access the campus map from the main navigation
+2. Search for "Computer Science Building"
+3. Click on building markers to view details
+4. Use the route planner to get directions between buildings
+5. Test the search functionality with different building names
+6. Verify GPS coordinates are accurate
+
+**Expected Results**:
+- Buildings display correctly on the map
+- Building information is accurate and complete
+- Route calculations are reasonable
+- Search results are relevant
+
+#### 4. Course Information Testing
+
+**Objective**: Validate access to course information
+
+**Steps**:
+1. Access the courses section from the main menu
+2. Browse available courses in your department
+3. View course details (description, credit hours, prerequisites)
+4. Check if course schedules are available
+5. Verify course search functionality
+
+**Expected Results**:
+- Course information is accurate and up-to-date
+- Search functionality works correctly
+- Course details include all expected information
+- Department filtering works properly
+
+#### 5. Quiz Testing
+
+**Objective**: Verify quiz participation functionality
+
+**Steps**:
+1. Access available quizzes from the courses section
+2. Start a quiz and answer sample questions
+3. Submit the quiz and view results
+4. Check if progress is tracked correctly
+5. Verify timer functionality if present
+
+**Expected Results**:
+- Quiz interface is intuitive and functional
+- Timer works correctly (if applicable)
+- Results are calculated accurately
+- Progress is tracked and saved
+
+#### 6. News and Announcements Testing
+
+**Objective**: Validate news access and filtering
+
+**Steps**:
+1. Access the news section from the main menu
+2. Browse through available news items
+3. Verify news filtering by category/department
+4. Check if publication dates are accurate
+5. Verify news search functionality
+
+**Expected Results**:
+- News items are relevant and recent
+- Filtering works correctly
+- Search returns relevant results
+- News displays correctly on all devices
+
+### Faculty/Staff Testing Procedure
+
+#### 1. Administrative Interface Testing
+
+**Objective**: Verify administrative capabilities
+
+**Steps**:
+1. Log in as staff member
+2. Access administrative dashboard
+3. Navigate through different administrative sections
+4. Test user management features (if available)
+5. Verify statistics and reporting features
+6. Test role-based access controls
+
+**Expected Results**:
+- Administrative interface is accessible
+- All relevant features are available
+- Statistics are accurate and up-to-date
+- Role-based restrictions work correctly
+
+#### 2. Course Management Testing
+
+**Objective**: Validate course management capabilities
+
+**Steps**:
+1. Access course management section
+2. View assigned courses
+3. Update course information (if permitted)
+4. Add announcements to courses (if permitted)
+5. Check student enrollment information (if available)
+
+**Expected Results**:
+- Course management interface is functional
+- Updates are saved correctly
+- Permissions are enforced appropriately
+- Student information is accessible as permitted
+
+#### 3. News and Communication Testing
+
+**Objective**: Validate communication features
+
+**Steps**:
+1. Access news management section
+2. Create a new announcement
+3. Set appropriate audience and department
+4. Schedule publication if needed
+5. Edit or update existing news items
+
+**Expected Results**:
+- News creation interface is intuitive
+- Announcements are published correctly
+- Audience targeting works properly
+- Scheduling functions as expected
+
+### Department Administrator Testing Procedure
+
+#### 1. Department-Specific Testing
+
+**Objective**: Verify department-level administrative functions
+
+**Steps**:
+1. Log in as department administrator
+2. Access department-specific dashboard
+3. View department statistics and reports
+4. Manage departmental courses and offerings
+5. Assign lecturers to courses
+6. Monitor department activity
+
+**Expected Results**:
+- Department dashboard displays relevant information
+- Course management within department works correctly
+- Lecturer assignment is functional
+- Statistics are accurate and current
+
+#### 2. User Management Testing
+
+**Objective**: Validate departmental user management
+
+**Steps**:
+1. Access user management section
+2. View department staff and lecturers
+3. Check user permissions and roles
+4. Verify department boundaries are respected
+5. Test cross-department access prevention
+
+**Expected Results**:
+- Department user list is accurate
+- Permissions are correctly assigned
+- Department boundaries are enforced
+- Cross-department access is prevented
+
+### System Administrator Testing Procedure
+
+#### 1. System-Wide Administration
+
+**Objective**: Validate comprehensive system administration
+
+**Steps**:
+1. Log in as system administrator
+2. Access system-wide administrative dashboard
+3. Manage all departments and users
+4. Configure system settings
+5. Monitor system statistics and performance
+6. Test system backup and maintenance features
+
+**Expected Results**:
+- System administration interface is comprehensive
+- All system functions are accessible
+- Configuration changes work correctly
+- System statistics are accurate
+
+#### 2. User and Role Management
+
+**Objective**: Verify user and role management capabilities
+
+**Steps**:
+1. Access user management section
+2. Create new user accounts
+3. Assign appropriate roles and permissions
+4. Deactivate or modify existing users
+5. Test role-based access control enforcement
+
+**Expected Results**:
+- User creation is functional
+- Role assignment works correctly
+- Permissions are properly enforced
+- User modifications are saved
+
+## Testing Scenarios
+
+### Common Testing Scenarios
+
+#### Scenario 1: New Student Onboarding
+**User**: New Student  
+**Duration**: 30 minutes  
+**Objective**: Test the complete new student experience
+
+**Steps**:
+1. Student receives login credentials
+2. Logs in for the first time
+3. Explores the dashboard and available features
+4. Searches for courses and buildings
+5. Interacts with the AI chatbot for assistance
+6. Takes a sample quiz
+7. Reads relevant news and announcements
+
+**Success Criteria**:
+- Student can complete all basic tasks
+- Interface is intuitive for new users
+- Help and guidance are available when needed
+
+#### Scenario 2: Department Administrator Daily Tasks
+**User**: Department Administrator  
+**Duration**: 45 minutes  
+**Objective**: Test typical daily administrative activities
+
+**Steps**:
+1. Log in and check department dashboard
+2. Review department statistics
+3. Manage course offerings for the semester
+4. Assign lecturers to new courses
+5. Create department announcement
+6. Review user permissions and roles
+7. Generate department reports
+
+**Success Criteria**:
+- All administrative tasks complete successfully
+- Data updates are reflected immediately
+- Reports contain accurate information
+
+#### Scenario 3: Faculty Member Course Management
+**User**: Lecturer  
+**Duration**: 30 minutes  
+**Objective**: Test lecturer-specific course management
+
+**Steps**:
+1. Log in and view assigned courses
+2. Update course syllabus and materials
+3. Create course announcements
+4. Set up a new quiz for students
+5. Review student enrollment (if available)
+6. Interact with AI assistant for course planning
+
+**Success Criteria**:
+- Course management features work correctly
+- Updates are saved and visible to students
+- Quiz creation is functional
+- AI assistance is helpful and accurate
+
+#### Scenario 4: System Performance Under Load
+**Multiple Users**  
+**Duration**: 60 minutes  
+**Objective**: Test system performance with multiple concurrent users
+
+**Steps**:
+1. Multiple users log in simultaneously
+2. Perform various activities concurrently
+3. Monitor system response times
+4. Test chat functionality under load
+5. Verify data consistency across users
+
+**Success Criteria**:
+- System remains responsive under load
+- Response times are acceptable (<5 seconds)
+- Data consistency is maintained
+- No system crashes or errors
+
+## Bug Reporting Guidelines
+
+### Bug Classification
+
+#### Critical Bugs
+- System crashes or data loss
+- Security vulnerabilities
+- Authentication bypass
+- Data corruption
+
+#### High Priority Bugs
+- Features completely non-functional
+- Major usability issues
+- Incorrect calculations or results
+- Performance severely degraded
+
+#### Medium Priority Bugs
+- Minor feature issues
+- Cosmetic problems
+- Inconvenient workflows
+- Minor performance issues
+
+#### Low Priority Bugs
+- Small usability improvements
+- Documentation errors
+- Minor visual inconsistencies
+- Enhancement requests
+
+### Bug Report Template
+
+When reporting bugs, include the following information:
+
+**Bug Report ID**: [Auto-generated]  
+**Reporter**: [Your name and role]  
+**Date**: [Date and time]  
+**Severity**: [Critical/High/Medium/Low]  
+**Environment**: [Browser, device, operating system]  
+
+**Description**:
+[Clear description of what went wrong]
+
+**Steps to Reproduce**:
+1. [First step]
+2. [Second step]
+3. [Third step]
+
+**Expected Result**:
+[What should have happened]
+
+**Actual Result**:
+[What actually happened]
+
+**Screenshots**:
+[Attach screenshots if applicable]
+
+**Additional Information**:
+[Any other relevant details]
+
+### Bug Reporting Process
+
+1. **Document Immediately**: Record bugs as soon as they are discovered
+2. **Provide Clear Steps**: Include detailed reproduction steps
+3. **Attach Evidence**: Include screenshots, error messages, or logs
+4. **Classify Severity**: Assess the impact and urgency
+5. **Submit Report**: Use the provided bug tracking system
+6. **Follow Up**: Monitor status and provide additional information if needed
+
+## Testing Checklists
+
+### Student Testing Checklist
+
+#### Authentication
+- [ ] Can log in with valid credentials
+- [ ] Appropriate error messages for invalid credentials
+- [ ] Session management works correctly
+- [ ] Can log out successfully
+- [ ] Account information displays correctly
+
+#### Navigation and Search
+- [ ] Campus map loads correctly
+- [ ] Building search returns accurate results
+- [ ] Route calculation works properly
+- [ ] GPS coordinates are accurate
+- [ ] Map is responsive on mobile devices
+
+#### Chatbot Functionality
+- [ ] Chat interface is accessible
+- [ ] AI responds within acceptable time (≤10 seconds)
+- [ ] Responses are relevant and helpful
+- [ ] Context is maintained in conversations
+- [ ] Building queries return accurate information
+
+#### Course Information
+- [ ] Course listings are accessible
+- [ ] Course details are accurate and complete
+- [ ] Search functionality works correctly
+- [ ] Department filtering is functional
+- [ ] Course information is up-to-date
+
+#### Quiz System
+- [ ] Quiz interface is intuitive
+- [ ] Timer functions correctly (if applicable)
+- [ ] Results are calculated accurately
+- [ ] Progress is tracked and saved
+- [ ] Quiz submission works properly
+
+#### News and Announcements
+- [ ] News section is accessible
+- [ ] News filtering works correctly
+- [ ] Search returns relevant results
+- [ ] Publication dates are accurate
+- [ ] News displays properly on all devices
+
+### Faculty/Staff Testing Checklist
+
+#### Administrative Interface
+- [ ] Dashboard displays relevant information
+- [ ] Administrative sections are accessible
+- [ ] Statistics are accurate and current
+- [ ] Reports generate correctly
+- [ ] Navigation is intuitive
+
+#### Course Management
+- [ ] Assigned courses are visible
+- [ ] Course information can be updated
+- [ ] Announcements can be added
+- [ ] Student information is accessible (if permitted)
+- [ ] Changes are saved and reflected
+
+#### User Management
+- [ ] User lists are accurate
+- [ ] Permissions are correctly assigned
+- [ ] Role-based access works properly
+- [ ] Department boundaries are respected
+- [ ] Cross-department access is prevented
+
+#### Communication
+- [ ] News creation interface works
+- [ ] Announcements can be published
+- [ ] Audience targeting functions correctly
+- [ ] Scheduling works as expected
+- [ ] Communication tools are intuitive
+
+### Department Administrator Testing Checklist
+
+#### Department Management
+- [ ] Department dashboard displays correctly
+- [ ] Department statistics are accurate
+- [ ] Course offerings can be managed
+- [ ] Lecturer assignments work properly
+- [ ] Department reports are generated correctly
+
+#### Staff Management
+- [ ] Department staff list is accurate
+- [ ] Lecturer assignments can be modified
+- [ ] Permission management works correctly
+- [ ] Activity monitoring is functional
+- [ ] Department boundaries are enforced
+
+#### Academic Management
+- [ ] Course scheduling is functional
+- [ ] Academic calendar integration works
+- [ ] Student enrollment tracking is accurate
+- [ ] Academic reports generate correctly
+- [ ] Department performance metrics are available
+
+### System Administrator Testing Checklist
+
+#### System Administration
+- [ ] System dashboard provides comprehensive overview
+- [ ] All system functions are accessible
+- [ ] Configuration management works correctly
+- [ ] System monitoring is functional
+- [ ] Backup and maintenance features work
+
+#### User and Role Management
+- [ ] User creation and management works
+- [ ] Role assignment is functional
+- [ ] Permission enforcement is correct
+- [ ] User activity monitoring works
+- [ ] Account management features are complete
+
+#### System Performance
+- [ ] System statistics are accurate
+- [ ] Performance monitoring is functional
+- [ ] Resource usage tracking works
+- [ ] System health indicators are accurate
+- [ ] Alert and notification system works
+
+## Performance Evaluation
+
+### Performance Metrics to Evaluate
+
+#### Response Time
+- **Target**: < 3 seconds for most operations
+- **Chatbot**: < 10 seconds for AI responses
+- **Navigation**: < 2 seconds for map loading
+- **Data Queries**: < 5 seconds for complex queries
+
+#### Usability
+- **Navigation**: Intuitive and easy to find features
+- **Interface**: Clean, professional appearance
+- **Mobile Compatibility**: Responsive design works well
+- **Accessibility**: Meets accessibility standards
+
+#### Reliability
+- **System Stability**: No crashes during testing
+- **Data Accuracy**: Information is correct and up-to-date
+- **Session Management**: Proper handling of user sessions
+- **Error Handling**: Graceful handling of errors
+
+#### Functionality
+- **Feature Completeness**: All advertised features work
+- **Role-Based Access**: Appropriate restrictions enforced
+- **Integration**: Different modules work together smoothly
+- **Data Flow**: Information flows correctly between systems
+
+### Performance Evaluation Form
+
+**Evaluator**: [Your name]  
+**Date**: [Testing date]  
+**Role**: [Your user role]  
+
+**Response Time Assessment**:
+- Login process: ⭐⭐⭐⭐⭐ (1-5 stars)
+- Chatbot responses: ⭐⭐⭐⭐⭐
+- Navigation loading: ⭐⭐⭐⭐⭐
+- Data query speed: ⭐⭐⭐⭐⭐
+
+**Usability Assessment**:
+- Interface design: ⭐⭐⭐⭐⭐
+- Navigation ease: ⭐⭐⭐⭐⭐
+- Mobile compatibility: ⭐⭐⭐⭐⭐
+- Help documentation: ⭐⭐⭐⭐⭐
+
+**Overall Satisfaction**: ⭐⭐⭐⭐⭐
+
+**Comments**: [Any additional feedback]
+
+## Feedback Collection
+
+### Feedback Methods
+
+#### 1. Post-Testing Survey
+Complete the comprehensive feedback survey provided after testing sessions.
+
+#### 2. Focus Group Sessions
+Participate in facilitated group discussions about the system.
+
+#### 3. One-on-One Interviews
+Schedule individual feedback sessions with testing coordinators.
+
+#### 4. Bug Tracking System
+Report bugs and issues through the dedicated bug tracking system.
+
+#### 5. Suggestion Box
+Submit enhancement suggestions and improvement ideas.
+
+### Feedback Categories
+
+#### Functional Feedback
+- Features that work well
+- Missing functionality
+- Broken or problematic features
+- Suggestions for new features
+
+#### Usability Feedback
+- Interface design suggestions
+- Workflow improvements
+- Accessibility concerns
+- Mobile experience feedback
+
+#### Performance Feedback
+- Speed and responsiveness issues
+- System stability concerns
+- Resource usage feedback
+- Scalability observations
+
+#### Technical Feedback
+- Integration issues
+- Data accuracy concerns
+- Security observations
+- Technical implementation feedback
+
+### Success Metrics
+
+#### Quantitative Metrics
+- **Test Completion Rate**: > 90%
+- **Bug Detection Rate**: Documented bugs per testing hour
+- **Feature Utilization**: Percentage of features tested
+- **User Satisfaction Score**: Average rating ≥ 4.0/5.0
+
+#### Qualitative Metrics
+- User sentiment analysis
+- Ease of use feedback
+- Learning curve assessment
+- Overall system acceptance
+
+### Testing Completion
+
+#### Final Checklist
+- [ ] All assigned test scenarios completed
+- [ ] Bug reports submitted for all issues
+- [ ] Feedback survey completed
+- [ ] Performance evaluation form submitted
+- [ ] Any additional documentation provided
+
+#### Follow-Up Actions
+- [ ] Review any follow-up questions from testing team
+- [ ] Participate in result review sessions
+- [ ] Provide additional feedback if requested
+- [ ] Confirm testing completion with coordinator
+
+## Support and Contact Information
+
+### Testing Support Team
+- **Testing Coordinator**: testing-coordinator@uniben.edu.ng
+- **Technical Support**: testing-tech@uniben.edu.ng
+- **User Support**: testing-help@uniben.edu.ng
+
+### Emergency Contact
+For critical issues during testing:
+- **Emergency Hotline**: +234-XXX-XXX-XXXX
+- **Emergency Email**: testing-emergency@uniben.edu.ng
+
+### Testing Resources
+- **User Manual**: [Link to user documentation]
+- **Video Tutorials**: [Link to video resources]
+- **FAQ**: [Link to frequently asked questions]
+- **Bug Tracking**: [Link to bug reporting system]
+
+---
+
+**Thank you for participating in the UNIBEN AI Assistant user testing program. Your feedback is crucial to ensuring the system meets the needs of our university community.**
+
+*This document will be updated regularly. Please check for the latest version before beginning testing.*

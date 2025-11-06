@@ -48,13 +48,41 @@ async function queryDatabaseTool({ queryType, searchTerm }) {
         };
 
       case 'course':
-        results = await Course.find({
-          $or: [
-            { code: { $regex: searchTerm, $options: 'i' } },
-            { title: { $regex: searchTerm, $options: 'i' } },
-            { department: { $regex: searchTerm, $options: 'i' } }
-          ]
-        }).limit(10);
+        // Parse searchTerm to extract level and department
+        let levelMatch = searchTerm.match(/(\d+)\s*level/i);
+        let departmentMatch = searchTerm.match(/computer science/i);
+        
+        let query = {};
+        let populateDept = false;
+        
+        if (levelMatch) {
+          query.level = parseInt(levelMatch[1]);
+          populateDept = true;
+        }
+        
+        if (departmentMatch) {
+          // If looking for Computer Science, we need to populate department to filter
+          results = await Course.find(query).populate('department').limit(10);
+          
+          // Filter results to only include Computer Science department
+          results = results.filter(course =>
+            course.department &&
+            course.department.name &&
+            course.department.name.toLowerCase().includes('computer science')
+          );
+        } else if (populateDept) {
+          // If we have level but no department, still populate to get department name
+          results = await Course.find(query).populate('department').limit(10);
+        } else {
+          // Original search for other terms - populate department if searching by department
+          results = await Course.find({
+            $or: [
+              { code: { $regex: searchTerm, $options: 'i' } },
+              { title: { $regex: searchTerm, $options: 'i' } },
+              { department: { $regex: searchTerm, $options: 'i' } }
+            ]
+          }).populate('department').limit(10);
+        }
 
         return {
           type: 'course',

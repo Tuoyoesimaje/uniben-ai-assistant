@@ -375,13 +375,6 @@ When showing financial information:
       functionCalls,
       conversationHistory: await chat.getHistory()
     };
-    console.debug('Final AI response text preview:', String(text).slice(0, 500));
-
-    return {
-      text,
-      functionCalls,
-      conversationHistory: await chat.getHistory()
-    };
   } catch (error) {
     console.error('Gemini API Error:', error);
     
